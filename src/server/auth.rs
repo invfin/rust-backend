@@ -8,7 +8,7 @@
 
 use axum::{
     async_trait,
-    extract::FromRequestParts,
+    extract::{FromRef, FromRequestParts},
     http::{request::Parts, StatusCode},
     response::{IntoResponse, Response},
     routing::{get, post},
@@ -22,7 +22,6 @@ use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation}
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::fmt::Display;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::AppState;
 
@@ -104,6 +103,7 @@ impl AuthBody {
 #[async_trait]
 impl<S> FromRequestParts<S> for Claims
 where
+    AppState: FromRef<S>,
     S: Send + Sync,
 {
     type Rejection = AuthError;
@@ -115,12 +115,7 @@ where
             .await
             .map_err(|_| AuthError::InvalidToken)?;
         // Decode the user data
-        let state = parts
-            .extensions
-            .get::<AppState>()
-            .ok_or((StatusCode::INTERNAL_SERVER_ERROR, "Missing state"))
-            .unwrap()
-            .clone();
+        let state = AppState::from_ref(_state);
         let token_data =
             decode::<Claims>(bearer.token(), &state.keys.decoding, &Validation::default())
                 .map_err(|_| AuthError::InvalidToken)?;

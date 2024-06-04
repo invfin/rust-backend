@@ -74,9 +74,6 @@ impl DatabasePools {
         let follower_url = None;
         let read_only_mode = get_bool_env("READ_ONLY_MODE");
 
-        println!("leader_url {:?}", &leader_url);
-        println!("*******************************************************************");
-
         let primary_async_pool_size = get_env("DB_PRIMARY_ASYNC_POOL_SIZE")
             .parse::<usize>()
             .unwrap();

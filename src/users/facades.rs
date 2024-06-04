@@ -1,4 +1,4 @@
-use crate::schema::users;
+use crate::db::schema::users;
 use chrono::NaiveDateTime;
 use diesel::{
     query_dsl::methods::FilterDsl, ExpressionMethods, Insertable, Queryable, RunQueryDsl,
@@ -20,10 +20,10 @@ use axum_extra::{
 };
 use serde_json::json;
 
-use crate::{responses::success, versioning::Version, AppState};
+use crate::server::{success, AppState, Version};
 
 #[derive(Debug, Serialize, Deserialize, Queryable, Selectable)]
-#[diesel(table_name = crate::schema::users)]
+#[diesel(table_name = users)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct User {
     pub id: i32,
@@ -41,7 +41,7 @@ pub struct User {
 }
 
 #[derive(Debug, Deserialize, Serialize, Insertable)]
-#[diesel(table_name = crate::schema::users)]
+#[diesel(table_name = users)]
 pub struct NewUser<'a> {
     pub username: String,
     pub first_name: &'a str,
@@ -92,14 +92,8 @@ pub async fn list_users(
     Query(payload): Query<FilterUsers>,
 ) -> impl IntoResponse {
     let conn = app.db_write().await.unwrap();
-    println!("*******************************************************************");
-    println!("token {:?}", &token);
-    println!("*******************************************************************");
-    println!("payload {:?}", &payload);
-    let users = conn
+    let users_result = conn
         .interact(move |conn| {
-            // let auth = AuthCheck::only_cookie().check(&req, conn).unwrap();
-            // let user = auth.user();
             users::table
                 .filter(users::is_actif.eq(payload.is_actif.unwrap_or(true)))
                 .load::<User>(conn)
@@ -107,7 +101,7 @@ pub async fn list_users(
         })
         .await
         .unwrap();
-    success(users).await
+    success(users_result).await
 }
 //https://docs.rs/axum/latest/axum/extract/index.html#the-order-of-extractors
 pub async fn create_user(
@@ -117,10 +111,27 @@ pub async fn create_user(
     Json(payload): Json<NewUserQueryParams>,
 ) -> impl IntoResponse {
     let conn = app.db_write().await.unwrap();
-    println!("*******************************************************************");
-    println!("token {:?}", &token);
-    println!("*******************************************************************");
-    println!("payload {:?}", &payload);
+    let user = conn
+        .interact(move |conn| {
+            // let auth = AuthCheck::only_cookie().check(&req, conn).unwrap();
+            // let user = auth.user();
+            let new_user = NewUser::new(payload);
+            diesel::insert_into(users::table)
+                .values(new_user)
+                .returning(User::as_returning())
+                .get_result(conn)
+                .expect("Error saving new user")
+        })
+        .await
+        .unwrap();
+    success(user).await
+}
+
+pub async fn create_user_form(
+    app: AppState,
+    Form(payload): Form<NewUserQueryParams>,
+) -> impl IntoResponse {
+    let conn = app.db_write().await.unwrap();
     let user = conn
         .interact(move |conn| {
             // let auth = AuthCheck::only_cookie().check(&req, conn).unwrap();

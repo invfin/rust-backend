@@ -1,4 +1,4 @@
-use super::database_pools::DatabasePools;
+use crate::db::DatabasePools;
 use axum::http::HeaderValue;
 use menva::{get_env, get_int_env, read_env_file};
 use std::{net::IpAddr, path::PathBuf, str::FromStr};
@@ -35,7 +35,7 @@ pub enum EnvIs {
 }
 
 #[derive(Debug)]
-pub struct Server {
+pub struct Config {
     pub env: EnvIs,
     pub ip: IpAddr,
     pub port: u16,
@@ -56,7 +56,7 @@ pub struct Server {
     pub serve_html: bool,
 }
 
-impl Server {
+impl Config {
     /// Returns a default value for the application's config
     ///
     /// Sets the following default values:
@@ -68,7 +68,7 @@ impl Server {
     ///
     ///
     /// - `SESSION_KEY`: The key used to sign and encrypt session cookies.
-    /// This function panics if the Server configuration is invalid.
+    /// This function panics if the Config configuration is invalid.
     pub fn from_environment() -> Self {
         let ip = [127, 0, 0, 1].into();
 
@@ -80,7 +80,7 @@ impl Server {
 
         let allowed_origins = AllowedOrigins::from_default_env();
 
-        Server {
+        Config {
             env: EnvIs::Dev,
             db: DatabasePools::full_from_environment(false),
             storage,
