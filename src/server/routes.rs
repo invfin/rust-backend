@@ -1,7 +1,6 @@
 use super::AppState;
-use crate::users::facades::{create_user, list_users};
+use crate::users::handlers::{login, register};
 use axum::{
-    http::Request,
     response::{Html, IntoResponse, Response},
     routing::post,
     Router,
@@ -9,42 +8,12 @@ use axum::{
 use hyper::StatusCode;
 use minijinja::context;
 use serde::{Deserialize, Serialize};
-use tower_http::auth::{AsyncAuthorizeRequest, AsyncRequireAuthorizationLayer};
 
-// #[derive(Clone, Copy)]
-// struct MyAuth;
-
-// impl<B> AsyncAuthorizeRequest<B> for MyAuth
-// where
-//     B: Send + Sync + 'static,
-// {
-//     type RequestBody = B;
-//     type ResponseBody = Full<Bytes>;
-//     type Future = BoxFuture<'static, Result<Request<B>, Response<Self::ResponseBody>>>;
-
-//     fn authorize(&mut self, mut request: Request<B>) -> Self::Future {
-//         Box::pin(async {
-//             if let Some(user_id) = check_auth(&request).await {
-//                 // Set `user_id` as a request extension so it can be accessed by other
-//                 // services down the stack.
-//                 request.extensions_mut().insert(user_id);
-
-//                 Ok(request)
-//             } else {
-//                 let unauthorized_response = Response::builder()
-//                     .status(StatusCode::UNAUTHORIZED)
-//                     .body(Full::<Bytes>::default())
-//                     .unwrap();
-
-//                 Err(unauthorized_response)
-//             }
-//         })
-//     }
-// }
 
 pub fn api_routes(state: AppState) -> Router<AppState> {
     Router::new()
-        .route("/users", post(create_user).get(list_users))
+        .route("/login", post(login))
+        .route("/register", post(register))
         // .layer(AsyncRequireAuthorizationLayer::new(MyAuth))
         .with_state(state)
 }

@@ -1,143 +1,29 @@
-//! Example JWT authorization/authentication.
-//!
-//! Run with
-//!
-//! ```not_rust
-//! JWT_SECRET=secret cargo run -p example-jwt
-//! ```
-
 use axum::{
-    async_trait,
-    extract::{FromRef, FromRequestParts},
-    http::{request::Parts, StatusCode},
-    response::{IntoResponse, Response},
-    routing::{get, post},
-    Json, RequestPartsExt, Router,
+    extract::{Request, State},
+
+    middleware::Next,
+    response::{ Response},
 };
 use axum_extra::{
     headers::{authorization::Bearer, Authorization},
     TypedHeader,
 };
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use chrono::{Duration, Utc};
+use jsonwebtoken::{
+    decode, encode, get_current_timestamp, DecodingKey, EncodingKey, Header, Validation,
+};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use std::fmt::Display;
 
 use crate::AppState;
 
-// Quick instructions
-//
-// - get an authorization token:
-//
-// curl -s \
-//     -w '\n' \
-//     -H 'Content-Type: application/json' \
-//     -d '{"client_id":"foo","client_secret":"bar"}' \
-//     http://localhost:3000/authorize
-//
-// - visit the protected area using the authorized token
-//
-// curl -s \
-//     -w '\n' \
-//     -H 'Content-Type: application/json' \
-//     -H 'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJiQGIuY29tIiwiY29tcGFueSI6IkFDTUUiLCJleHAiOjEwMDAwMDAwMDAwfQ.M3LAZmrzUkXDC1q5mSzFAs_kJrwuKz3jOoDmjJ0G4gM' \
-//     http://localhost:3000/protected
-//
-// - try to visit the protected area using an invalid token
-//
-// curl -s \
-//     -w '\n' \
-//     -H 'Content-Type: application/json' \
-//     -H 'Authorization: Bearer blahblahblah' \
-//     http://localhost:3000/protected
+use super::{AppError, Ulid};
 
-pub async fn protected(claims: Claims) -> Result<String, AuthError> {
-    // Send the protected data to the user
-    Ok(format!(
-        "Welcome to the protected area :)\nYour data:\n{claims}",
-    ))
+pub async fn protected(TypedHeader(bearer): TypedHeader<Authorization<Bearer>>) -> String {
+    format!("Welcome to the protected area :)\nYour data:\n{bearer:?}",)
 }
 
-pub async fn authorize(
-    state: AppState,
-    Json(payload): Json<AuthPayload>,
-) -> Result<Json<AuthBody>, AuthError> {
-    // Check if the user sent the credentials
-    if payload.client_id.is_empty() || payload.client_secret.is_empty() {
-        return Err(AuthError::MissingCredentials);
-    }
-    // Here you can check the user credentials from a database
-    if payload.client_id != "foo" || payload.client_secret != "bar" {
-        return Err(AuthError::WrongCredentials);
-    }
-    let claims = Claims {
-        sub: "b@b.com".to_owned(),
-        company: "ACME".to_owned(),
-        // Mandatory expiry time as UTC timestamp
-        exp: 2000000000, // May 2033
-    };
-
-    // Create the authorization token
-    let token = encode(&Header::default(), &claims, &state.keys.encoding)
-        .map_err(|_| AuthError::TokenCreation)?;
-
-    // Send the authorized token
-    Ok(Json(AuthBody::new(token)))
-}
-
-impl Display for Claims {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Email: {}\nCompany: {}", self.sub, self.company)
-    }
-}
-
-impl AuthBody {
-    fn new(access_token: String) -> Self {
-        Self {
-            access_token,
-            token_type: "Bearer".to_string(),
-        }
-    }
-}
-
-#[async_trait]
-impl<S> FromRequestParts<S> for Claims
-where
-    AppState: FromRef<S>,
-    S: Send + Sync,
-{
-    type Rejection = AuthError;
-
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        // Extract the token from the authorization header
-        let TypedHeader(Authorization(bearer)) = parts
-            .extract::<TypedHeader<Authorization<Bearer>>>()
-            .await
-            .map_err(|_| AuthError::InvalidToken)?;
-        // Decode the user data
-        let state = AppState::from_ref(_state);
-        let token_data =
-            decode::<Claims>(bearer.token(), &state.keys.decoding, &Validation::default())
-                .map_err(|_| AuthError::InvalidToken)?;
-
-        Ok(token_data.claims)
-    }
-}
-
-impl IntoResponse for AuthError {
-    fn into_response(self) -> Response {
-        let (status, error_message) = match self {
-            AuthError::WrongCredentials => (StatusCode::UNAUTHORIZED, "Wrong credentials"),
-            AuthError::MissingCredentials => (StatusCode::BAD_REQUEST, "Missing credentials"),
-            AuthError::TokenCreation => (StatusCode::INTERNAL_SERVER_ERROR, "Token creation error"),
-            AuthError::InvalidToken => (StatusCode::BAD_REQUEST, "Invalid token"),
-        };
-        let body = Json(json!({
-            "error": error_message
-        }));
-        (status, body).into_response()
-    }
-}
+const SITE: &str  = "elerem.com";
 
 pub struct Keys {
     encoding: EncodingKey,
@@ -153,29 +39,69 @@ impl Keys {
     }
 }
 
+
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Claims {
-    sub: String,
-    company: String,
-    exp: usize,
+struct JWTClaims {
+    // Registered claims
+    iss: String, // Issuer
+    sub: String, // Subject
+    aud: String, // Audience
+    exp: i64,    // Expiration time
+    iat: u64,    // Issued at
+    jti: String, // JWT ID
+
+    // Private claims
+    pub rol: String, // User's role TODO: use an enum
 }
 
-#[derive(Debug, Serialize)]
-pub struct AuthBody {
-    access_token: String,
-    token_type: String,
+impl JWTClaims {
+    fn new(user_id: i32, user_role: String) -> Self {
+        JWTClaims {
+            iss: SITE.to_owned(),
+            sub: user_id.to_string(),
+            aud: SITE.to_owned(),
+            exp: (Utc::now() + Duration::days(1)).timestamp(),
+            iat: get_current_timestamp(),
+            jti: Ulid::new().generate(&user_id),
+            rol: user_role,
+        }
+    }
 }
 
-#[derive(Debug, Deserialize)]
-pub struct AuthPayload {
-    client_id: String,
-    client_secret: String,
+impl Display for JWTClaims {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
 }
 
-#[derive(Debug)]
-pub enum AuthError {
-    WrongCredentials,
-    MissingCredentials,
-    TokenCreation,
-    InvalidToken,
+pub async fn create_token(user_id: i32, user_role: String, state: &AppState)->Result<String, AppError>{
+    let claims = JWTClaims::new(user_id, user_role);
+    encode(&Header::default(), &claims, &state.keys.encoding).map_err(AppError::JWTEncodingError)
 }
+
+#[derive(Clone)]
+pub struct UserRequest {
+    id: i32,
+    role: String,
+}
+
+pub async fn jwt_middleware(
+    State(state): State<AppState>,
+    TypedHeader(bearer): TypedHeader<Authorization<Bearer>>,
+    mut request: Request,
+    next: Next,
+) -> Result<Response, AppError> {
+    let mut validation = Validation::default();
+    validation.set_audience(&[SITE]);
+    validation.set_issuer(&[SITE]);
+    validation.reject_tokens_expiring_in_less_than = 86400u64;
+    validation.set_required_spec_claims(&["exp", "nbf", "aud", "iss", "sub"]);
+
+    let token_data = decode::<JWTClaims>(bearer.token(), &state.keys.decoding, &validation).map_err(AppError::JWTDecodingError)?;
+    request.extensions_mut().insert(UserRequest {
+        id: token_data.claims.sub.parse::<i32>().unwrap(),
+        role: token_data.claims.rol,
+    });
+    Ok(next.run(request).await)
+}
+

@@ -3,73 +3,51 @@ use axum::{
     response::{IntoResponse, Json, Response},
 };
 use serde::Serialize;
-use serde_json::{json, Value};
-use std::fmt::Debug;
 
-#[derive(Debug)]
-pub enum CRUDError {
-    NotFound,
-    MaxRetry,
-    WrongParameters,
-    Write,
-    Delete,
-    JsonError,
-    InternalError,
-}
 
-pub async fn success<T: serde::Serialize>(data: T) -> Response {
-    (StatusCode::OK, Json(json!({ "data": data }))).into_response()
+pub type AppResult<T> = std::result::Result<Json<T>, AppError>;
+
+// The kinds of errors we can hit in our application.
+pub enum AppError {
+    // The request body contained invalid JSON
+    // JsonRejection(JsonRejection),
+    JWTEncodingError(jsonwebtoken::errors::Error),
+    JWTDecodingError(jsonwebtoken::errors::Error),
+    DatabaseQueryError(diesel::result::Error),
+    DatabaseConnectionInteractError(deadpool_diesel::InteractError),
+    DatabasePoolError(deadpool_diesel::PoolError),
+    DoesNotExist,
 }
 
-pub async fn non_auth() -> Response {
-    (StatusCode::FORBIDDEN, Json(json!({"message": "Not auth"}))).into_response()
+// How we want errors responses to be serialized
+#[derive(Serialize)]
+struct ErrorMessage {
+    message: String,
 }
 
-pub async fn max_limit() -> Response {
-    (
-        StatusCode::NOT_ACCEPTABLE,
-        Json(json!({"message": "limit exceeded"})),
-    )
-        .into_response()
-}
-pub async fn not_found<T: Debug>(data: &T) -> Response {
-    (
-        StatusCode::NOT_FOUND,
-        Json(json!({ "message": format!("{:#?} not found", data) })),
-    )
-        .into_response()
-}
-pub async fn wrong_query<T: Debug + ?Sized>(query: &T) -> Response {
-    pre_wrong_query(query).await.into_response()
-}
-pub async fn pre_wrong_query<T: Debug + ?Sized>(query: &T) -> (StatusCode, axum::Json<Value>) {
-    (
-        StatusCode::NOT_ACCEPTABLE,
-        Json(json!({ "message": format!("{:#?}", query) })),
-    )
-}
-pub async fn our_fault() -> Response {
-    (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(json!({"message": "oupsi"})),
-    )
-        .into_response()
-}
+// Tell axum how `AppError` should be converted into a response.
+//
+// This is also a convenient place to log errors.
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        
+        let (status, message) = match self {
+            // AppError::JsonRejection(rejection) => {
+            //     (rejection.status(), rejection.body_text())
+            // }
+            _ => {
+                // Because `TraceLayer` wraps each request in a span that contains the request
+                // method, uri, etc we don't need to include those details here
+                tracing::error!("error from time_library");
 
-pub async fn match_error<T: Serialize + Send, P: Serialize + Send + Debug>(
-    result: Result<T, CRUDError>,
-    params: &P,
-) -> Response {
-    match result {
-        Ok(u) => success(u).await,
-        Err(err) => match err {
-            CRUDError::NotFound => not_found(params).await,
-            CRUDError::MaxRetry => max_limit().await,
-            CRUDError::WrongParameters => not_found(params).await,
-            CRUDError::Write => our_fault().await,
-            CRUDError::Delete => our_fault().await,
-            CRUDError::JsonError => our_fault().await,
-            CRUDError::InternalError => our_fault().await,
-        },
+                // Don't expose any details about the error to the client
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Something went wrong".to_owned(),
+                )
+            }
+        };
+
+        (status, Json(ErrorMessage { message })).into_response()
     }
 }

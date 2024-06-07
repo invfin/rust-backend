@@ -1,54 +1,25 @@
-// use super::middlewares::{get_cors, post_cors};
+use std::{time::Duration, sync::{atomic::AtomicU64,Arc}};
 
-// use crate::middlewares::auth::{authorize, protected};
-// use crate::middlewares::cors::post_cors;
-
-use std::iter::once;
-use std::sync::atomic::AtomicU64;
-use std::sync::Arc;
-use std::time::Duration;
-
-// use crate::responses::not_found;
-use crate::users::facades::{create_user, create_user_form, list_users};
-use crate::AppState;
-use axum::extract::{DefaultBodyLimit, Path};
-use axum::http::HeaderValue;
-use axum::response::IntoResponse;
-use axum::routing::{delete, get, post, put};
-use axum::Router;
-use axum::{
-    extract::{Form, MatchedPath, Query},
-    http::{Request, StatusCode},
-    response::{Html, Redirect, Response},
-};
-use axum_extra::{
-    headers::{authorization::Bearer, Authorization},
-    TypedHeader,
-};
-
+use axum::{extract::MatchedPath, http::{HeaderValue,Request}, routing::{get, post}, Router};
 use hyper::header::{AUTHORIZATION, CONTENT_TYPE, COOKIE};
 use tower::ServiceBuilder;
-use tower_http::normalize_path::NormalizePathLayer;
-use tower_http::timeout::TimeoutLayer;
-use tower_http::ServiceBuilderExt;
 use tower_http::{
-    compression::CompressionLayer,
-    cors::CorsLayer,
+    timeout::TimeoutLayer,
+    normalize_path::NormalizePathLayer,
     request_id::{MakeRequestId, RequestId},
     sensitive_headers::SetSensitiveRequestHeadersLayer,
-    set_header::SetResponseHeaderLayer,
+    ServiceBuilderExt,
     trace::{
         DefaultOnBodyChunk, DefaultOnEos, DefaultOnFailure, DefaultOnRequest, DefaultOnResponse,
         TraceLayer,
     },
-    validate_request::ValidateRequestHeaderLayer,
     LatencyUnit,
 };
-
 use tracing::{info_span, Level};
 
-use super::auth::{authorize, protected};
-use super::routes::handler_index;
+use crate::{users::handlers::login, AppState};
+use super::{auth::{jwt_middleware, protected}, routes::{api_routes, error_404, home}};
+
 
 // A `MakeRequestId` that increments an atomic counter
 #[derive(Clone, Default)]
@@ -127,26 +98,10 @@ pub fn get_router(state: AppState) -> Router<()> {
 
     Router::new()
         .route("/", get(home))
-        .route("/nice", get(handler_index).post(create_user_form))
+        .route("/login", post(login))
         .nest("/api/:version/", api_routes(state.clone()))
         .route("/protected", get(protected))
-        .route("/authorize", post(authorize))
-        // .layer(post_cors())
         .fallback(error_404)
         .layer(middleware)
         .with_state(state)
-}
-
-fn api_routes(state: AppState) -> Router<AppState> {
-    Router::new()
-        .route("/users", post(create_user).get(list_users))
-        .with_state(state)
-}
-
-pub async fn home() -> Response {
-    (StatusCode::OK, Html("<h1>Welcome to Elerem</h1>")).into_response()
-}
-
-pub async fn error_404() -> Response {
-    (StatusCode::NOT_FOUND, Html("<h1>Nothing to see here</h1>")).into_response()
 }
