@@ -4,7 +4,9 @@
 //! Checkout the [crates.io source code](https://github.com/rust-lang/crates.io/)
 //! for a real world application using axum and diesel
 
+mod companies;
 mod db;
+mod dictionary;
 mod server;
 mod users;
 
@@ -21,8 +23,6 @@ use tokio::{
 };
 
 const CORE_THREADS: usize = 4;
-
-fn server() {}
 
 fn main() -> Result<(), i16> {
     read_default_file();
@@ -51,21 +51,12 @@ fn main() -> Result<(), i16> {
 
     // Block the main thread until the server has shutdown
     rt.block_on(async {
-        // Create a `TcpListener` using tokio.
-        // let listener = TcpListener::bind((app.config.ip, app.config.port)).await?;
         let listener = TcpListener::bind((config.ip, config.port)).await?;
         info!(
             "Server started! http://{:?}",
             listener.local_addr().unwrap()
         );
 
-        // tokio::join!(
-        //     async {
-
-        //     }
-        // );
-
-        // Run the server with graceful shutdown
         axum::serve(listener, service)
             .with_graceful_shutdown(shutdown_signal())
             .await

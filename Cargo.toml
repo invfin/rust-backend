@@ -1,11 +1,12 @@
 [package]
 name = "elerem"
+description = "Super cool things about companies"
 version = "3.0.0"
 edition = "2021"
 
 [dependencies]
 deadpool-diesel = { version = "0.6.1", features = ["postgres", "tracing"] }
-diesel = { version = "2.2.0", features = ["serde_json", "chrono", "numeric"] }
+diesel = { version = "2.2.0", features = ["serde_json", "chrono", "numeric", "64-column-tables"] }
 diesel_full_text_search = "2.2.0"
 diesel_migrations = { version = "2.2.0", features = ["postgres"] }
 
@@ -34,3 +35,7 @@ serde_urlencoded = "0.7.1"
 menva = "1.0.0"
 url = "2.5.0"
 chrono = { version = "0.4", features = ["serde"] }
+bigdecimal = { version = "0.4.3", features = ["serde"] }
+utoipa = { version = "=5.0.0-alpha.0", features = ["axum_extras", "chrono", "decimal"] }
+utoipa-scalar = { version = "=0.2.0-alpha.0", features = ["axum"] }
+utoipauto = "0.1.11"

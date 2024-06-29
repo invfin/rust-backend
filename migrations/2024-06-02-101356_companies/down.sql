@@ -1,0 +1,14 @@
+DROP TABLE income_statements;
+DROP TABLE balance_sheet_statements;
+DROP TABLE cashflow_statements;
+DROP TABLE rentability_ratios;
+DROP TABLE liquidity_ratios;
+DROP TABLE margin_ratios;
+DROP TABLE free_cashflow_ratios;
+DROP TABLE per_share_values;
+DROP TABLE non_gaap_figures;
+DROP TABLE operation_risk_ratios;
+DROP TABLE enterprise_value_ratios;
+DROP TABLE company_growth;
+DROP TABLE efficiency_ratios;
+DROP TABLE price_to_ratios;

@@ -55,7 +55,7 @@ struct JWTClaims {
 }
 
 impl JWTClaims {
-    fn new(user_id: i32, user_role: String) -> Self {
+    fn new(user_id: i64, user_role: String) -> Self {
         JWTClaims {
             iss: SITE.to_owned(),
             sub: user_id.to_string(),
@@ -74,9 +74,9 @@ impl Display for JWTClaims {
     }
 }
 
-pub async fn create_token(user_id: i32, user_role: String, state: &AppState)->Result<String, AppError>{
+pub async fn create_token(user_id: i64, user_role: String, state: &AppState)->Result<String, AppError>{
     let claims = JWTClaims::new(user_id, user_role);
-    encode(&Header::default(), &claims, &state.keys.encoding).map_err(AppError::JWTEncodingError)
+    encode(&Header::default(), &claims, &state.keys.encoding).map_err(AppError::JWTError)
 }
 
 #[derive(Clone)]
@@ -97,7 +97,7 @@ pub async fn jwt_middleware(
     validation.reject_tokens_expiring_in_less_than = 86400u64;
     validation.set_required_spec_claims(&["exp", "nbf", "aud", "iss", "sub"]);
 
-    let token_data = decode::<JWTClaims>(bearer.token(), &state.keys.decoding, &validation).map_err(AppError::JWTDecodingError)?;
+    let token_data = decode::<JWTClaims>(bearer.token(), &state.keys.decoding, &validation).map_err(AppError::JWTError)?;
     request.extensions_mut().insert(UserRequest {
         id: token_data.claims.sub.parse::<i32>().unwrap(),
         role: token_data.claims.rol,

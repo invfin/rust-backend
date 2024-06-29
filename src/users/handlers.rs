@@ -1,50 +1,83 @@
+use axum::{
+    routing::post,
+    Json, Router,
+};
 use diesel::{
-    query_dsl::methods::{FilterDsl, SelectDsl}, ExpressionMethods, Insertable, Queryable, RunQueryDsl,
-    Selectable, SelectableHelper, OptionalExtension
+    query_dsl::methods::{FilterDsl, SelectDsl},
+    ExpressionMethods, Insertable, OptionalExtension, Queryable, RunQueryDsl, Selectable,
+    SelectableHelper,
 };
 use serde::{Deserialize, Serialize};
-use axum::Json;
 
-use crate::{db::schema::users, server::{create_token, AppError,AppState, AppResult}};
+use crate::{
+    db::schema::users,
+    server::{create_token, AppError, AppJson, AppResult, AppState},
+};
 
+use argon2::{
+    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
+    Argon2,
+};
+
+use utoipa::OpenApi;
+use utoipa::{ToSchema, ToResponse};
+use utoipa;
+
+#[derive(OpenApi)]
+#[openapi(
+    paths(login,register),
+    components(
+        schemas(LoginPayload, RegisterPayload, LoginResponse),
+        responses(LoginResponse)
+    ),
+    tags(
+        (name = "Users", description = "All about users")
+    ),
+)]
+pub struct ApiDoc;
+
+fn hash_password(password: &str) -> String {
+    let salt = SaltString::generate(&mut OsRng);
+    let argon2 = Argon2::default();
+    argon2
+        .hash_password(password.as_bytes(), &salt)
+        .unwrap()
+        .to_string()
+}
 
 #[derive(Debug, Deserialize, Serialize, Insertable)]
 #[diesel(table_name = users)]
-pub struct NewUser<'a> {
+pub struct NewUser {
     pub username: String,
-    pub first_name: &'a str,
-    pub last_name: &'a str,
     pub email: String,
-    pub is_actif: bool,
+    pub is_active: bool,
     pub is_superuser: bool,
     pub is_staff: bool,
     pub is_test: bool,
     pub password: String,
 }
 
-impl<'a> NewUser<'a> {
+impl NewUser {
     pub fn new(query_params: RegisterPayload) -> Self {
         Self {
             username: query_params.username,
-            first_name: "",
-            last_name: "",
             email: query_params.email,
-            is_actif: true,
+            is_active: true,
             is_superuser: false,
             is_staff: false,
             is_test: false,
-            password: query_params.password,
+            password: hash_password(&query_params.password),
         }
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct LoginPayload {
-    pub username: String,
+    pub email: String,
     pub password: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct RegisterPayload {
     pub username: String,
     pub email: String,
@@ -55,48 +88,79 @@ pub struct RegisterPayload {
 #[diesel(table_name = users)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct LoginUser {
-    pub id: i32,
+    pub id: i64,
     pub username: String,
     pub email: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct LoginResponse{
-    pub id: i32,
+#[derive(Debug, Serialize, Deserialize, ToResponse, ToSchema)]
+pub struct LoginResponse {
     pub username: String,
     pub email: String,
     pub token: String,
 }
 
-impl LoginResponse{
-    async fn new(user:&LoginUser, state: &AppState)->AppResult<LoginResponse>{
-        Ok(Json(Self{
-            id: user.id.clone(),
+impl LoginResponse {
+    async fn new(user: &LoginUser, state: &AppState) -> AppResult<LoginResponse> {
+        Ok(Json(Self {
             username: user.username.clone(),
             email: user.email.clone(),
-            token: create_token(user.id, "admin".to_owned(), state).await?
+            token: create_token(user.id, "admin".to_owned(), state).await?,
         }))
     }
 }
 
-pub async fn login(state: AppState, Json(payload): Json<LoginPayload>) -> AppResult<LoginResponse> {
-    let conn =  state.db_write().await?;
-    let user = conn
+#[utoipa::path(
+    post, 
+    path = "login",
+    request_body = LoginPayload,
+    description = "User logedin",
+    responses(
+            (status = 200, body = LoginResponse),
+            (status = "4XX", body = ErrorMessage, description = "Opusi daisy"),
+            (status = "5XX", body = ErrorMessage, description = "Opusi daisy"),
+        )
+)]
+pub async fn login(
+    state: AppState,
+    AppJson(payload): AppJson<LoginPayload>,
+) -> AppResult<LoginResponse> {
+    let conn = state.db_write().await?;
+    let (user, password) = conn
         .interact(move |conn| {
             users::table
-                .filter(users::username.eq(payload.username))
-                .filter(users::password.eq(payload.password))
-                .select((users::id, users::username, users::email))
-                .first::<LoginUser>(conn)
+                .filter(users::email.eq(payload.email))
+                .select(((users::id, users::username, users::email), users::password))
+                .first::<(LoginUser, String)>(conn)
                 .optional()
                 .map_err(AppError::DatabaseQueryError)
-                
         })
-        .await.map_err(AppError::DatabaseConnectionInteractError)??.ok_or(AppError::DoesNotExist)?;
-        LoginResponse::new(&user, &state).await
+        .await
+        .map_err(AppError::DatabaseConnectionInteractError)??
+        .ok_or(AppError::DoesNotExist)?;
+    let parsed_hash = PasswordHash::new(&password).unwrap();
+    Argon2::default()
+        .verify_password(payload.password.as_bytes(), &parsed_hash)
+        .map_err(AppError::WrongPassword)?;
+    LoginResponse::new(&user, &state).await
 }
 
-pub async fn register(state: AppState, Json(payload): Json<RegisterPayload>) -> AppResult<LoginResponse> {
+
+#[utoipa::path(
+    post, 
+    path = "register",
+    description = "Register user",
+    request_body = RegisterPayload,
+    responses(
+            (status = 200, body = LoginResponse, description = "User created and registered"),
+            (status = "4XX", body = ErrorMessage, description = "Opusi daisy"),
+            (status = "5XX", body = ErrorMessage, description = "Opusi daisy"),
+        )
+)]
+pub async fn register(
+    state: AppState,
+    AppJson(payload): AppJson<RegisterPayload>,
+) -> AppResult<LoginResponse> {
     let conn = state.db_write().await?;
     let user = conn
         .interact(move |conn| {
@@ -106,6 +170,14 @@ pub async fn register(state: AppState, Json(payload): Json<RegisterPayload>) -> 
                 .get_result(conn)
                 .map_err(AppError::DatabaseQueryError)
         })
-        .await.map_err(AppError::DatabaseConnectionInteractError)??;
+        .await
+        .map_err(AppError::DatabaseConnectionInteractError)??;
     LoginResponse::new(&user, &state).await
+}
+
+pub fn routes(state: AppState) -> Router<AppState> {
+    Router::new()
+        .route("/login", post(login))
+        .route("/register", post(register))
+        .with_state(state)
 }

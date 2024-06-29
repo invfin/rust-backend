@@ -15,7 +15,7 @@ impl Ulid {
         }
     }
 
-    pub fn generate(&mut self, user_id: &i32) -> String {
+    pub fn generate(&mut self, user_id: &i64) -> String {
         let mut ulid_bytes = [0u8; 16];
 
         // Current timestamp since UNIX epoch in milliseconds

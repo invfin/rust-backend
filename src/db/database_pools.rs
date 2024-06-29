@@ -71,7 +71,7 @@ impl DatabasePools {
             get_env("DATABASE_PASSWORD"),
             get_env("DATABASE_NAME"),
         );
-        let follower_url = None;
+        let follower_url = Some(get_env("READ_ONLY_REPLICA_URL"));
         let read_only_mode = get_bool_env("READ_ONLY_MODE");
 
         let primary_async_pool_size = get_env("DB_PRIMARY_ASYNC_POOL_SIZE")
