@@ -341,7 +341,7 @@ diesel::table! {
         date -> Timestamp,
         description -> Nullable<Text>,
         comment -> Nullable<Text>,
-        currency_id -> Nullable<Int8>,
+        currency_id -> Int8,
         amount_converted -> Numeric,
         created_at -> Timestamp,
         updated_at -> Timestamp,

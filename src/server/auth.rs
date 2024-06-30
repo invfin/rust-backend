@@ -1,8 +1,7 @@
 use axum::{
     extract::{Request, State},
-
     middleware::Next,
-    response::{ Response},
+    response::Response,
 };
 use axum_extra::{
     headers::{authorization::Bearer, Authorization},
@@ -19,11 +18,7 @@ use crate::AppState;
 
 use super::{AppError, Ulid};
 
-pub async fn protected(TypedHeader(bearer): TypedHeader<Authorization<Bearer>>) -> String {
-    format!("Welcome to the protected area :)\nYour data:\n{bearer:?}",)
-}
-
-const SITE: &str  = "elerem.com";
+const SITE: &str = "elerem.com";
 
 pub struct Keys {
     encoding: EncodingKey,
@@ -38,7 +33,6 @@ impl Keys {
         }
     }
 }
-
 
 #[derive(Debug, Serialize, Deserialize)]
 struct JWTClaims {
@@ -74,7 +68,11 @@ impl Display for JWTClaims {
     }
 }
 
-pub async fn create_token(user_id: i64, user_role: String, state: &AppState)->Result<String, AppError>{
+pub async fn create_token(
+    user_id: i64,
+    user_role: String,
+    state: &AppState,
+) -> Result<String, AppError> {
     let claims = JWTClaims::new(user_id, user_role);
     encode(&Header::default(), &claims, &state.keys.encoding).map_err(AppError::JWTError)
 }
@@ -97,11 +95,11 @@ pub async fn jwt_middleware(
     validation.reject_tokens_expiring_in_less_than = 86400u64;
     validation.set_required_spec_claims(&["exp", "nbf", "aud", "iss", "sub"]);
 
-    let token_data = decode::<JWTClaims>(bearer.token(), &state.keys.decoding, &validation).map_err(AppError::JWTError)?;
+    let token_data = decode::<JWTClaims>(bearer.token(), &state.keys.decoding, &validation)
+        .map_err(AppError::JWTError)?;
     request.extensions_mut().insert(UserRequest {
         id: token_data.claims.sub.parse::<i32>().unwrap(),
         role: token_data.claims.rol,
     });
     Ok(next.run(request).await)
 }
-

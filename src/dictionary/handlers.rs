@@ -4,25 +4,24 @@ use axum::{
     Json, Router,
 };
 use diesel::{
+    BelongingToDsl,
     associations::{Associations, Identifiable}, query_dsl::methods::{FilterDsl, SelectDsl}, ExpressionMethods, OptionalExtension, Queryable, RunQueryDsl, Selectable, SelectableHelper
 };
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    db::{schema::{definitions, definitions_categories, definitions_content}, Paginate},
+    db::{schema::{definitions, definitions_content}, Paginate},
     server::{AppError,  AppResult, AppState},
 };
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::NaiveDateTime;
 
 use utoipa;
-use utoipa::{
-     OpenApi,
-};
-use utoipa::{IntoParams, ToResponse, ToSchema};
+
+use utoipa::{IntoParams,OpenApi, ToResponse, ToSchema};
 
 
 #[derive(Serialize, Deserialize,Debug)]
-pub enum Status {
+enum Status {
     Publsihed,
     Draft,
     NeedRevision,
@@ -47,28 +46,28 @@ pub struct ApiDoc;
 #[derive(Queryable, Debug, Serialize, Deserialize, Selectable, ToResponse, ToSchema)]
 #[diesel(table_name = definitions)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct ShortDefinition {
-    pub title: String,
-    pub resume: String,
-    pub slug: String,
-    pub total_views: i64,
-    pub updated_at: NaiveDateTime,
-    pub total_votes: i64,
-    pub author_id: i64,
-    pub thumbnail: Option<String>,
+struct ShortDefinition {
+    title: String,
+    resume: String,
+    slug: String,
+    total_views: i64,
+    updated_at: NaiveDateTime,
+    total_votes: i64,
+    author_id: i64,
+    thumbnail: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, IntoParams)]
-pub struct ShortDefinitionQuery {
-    pub category: Option<String>,
-    pub author: Option<String>,
-    pub publication_date: Option<String>,
-    pub page: Option<i64>,
-    pub per_page: Option<i64>,
+struct ShortDefinitionQuery {
+    category: Option<String>,
+    author: Option<String>,
+    publication_date: Option<String>,
+    page: Option<i64>,
+    per_page: Option<i64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToResponse, ToSchema)]
-pub struct ShortDefinitionResponse {
+struct ShortDefinitionResponse {
     data: Vec<ShortDefinition>,
     total_pages: i64,
 }
@@ -84,7 +83,7 @@ pub struct ShortDefinitionResponse {
         )
         
 )]
-pub async fn list_definitions(Query(query_params): Query<ShortDefinitionQuery>, state: AppState) -> AppResult<ShortDefinitionResponse> {
+async fn list_definitions(Query(query_params): Query<ShortDefinitionQuery>, state: AppState) -> AppResult<ShortDefinitionResponse> {
     let conn =  state.db_write().await?;
     let (query, total_pages) = conn
         .interact(move |conn| {
@@ -101,38 +100,38 @@ pub async fn list_definitions(Query(query_params): Query<ShortDefinitionQuery>, 
 }
 
 #[derive(Serialize, Deserialize, ToResponse, Debug, ToSchema)]
-pub struct DefinitionResponse{
-    pub definition: Definition,
-    pub content: Vec<DefinitionContent>,
+struct DefinitionResponse{
+    definition: Definition,
+    content: Vec<DefinitionContent>,
 }
 
 #[derive(Serialize, Deserialize, ToResponse,Queryable, Selectable, Identifiable,  Debug, PartialEq, ToSchema)]
 #[diesel(table_name = definitions)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct Definition {
-    pub id: i64,
-    pub title: String,
-    pub resume: String,
-    pub slug: String,
-    pub created_at: NaiveDateTime,
-    pub total_views: i64,
-    pub updated_at: NaiveDateTime,
-    pub total_votes: i64,
-    pub author_id: i64,
-    pub thumbnail: Option<String>
+struct Definition {
+    id: i64,
+    title: String,
+    resume: String,
+    slug: String,
+    created_at: NaiveDateTime,
+    total_views: i64,
+    updated_at: NaiveDateTime,
+    total_votes: i64,
+    author_id: i64,
+    thumbnail: Option<String>
 }
 
 #[derive(Serialize, Deserialize,Queryable, Identifiable, ToResponse, Selectable, Associations,Debug, PartialEq, ToSchema)]
 #[diesel(belongs_to(Definition))]
 #[diesel(table_name = definitions_content)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct DefinitionContent {
-    pub id: i64,
-    pub title: String,
-    pub slug: String,
-    pub content: String,
-    pub order: i64,
-    pub definition_id: i64,
+struct DefinitionContent {
+    id: i64,
+    title: String,
+    slug: String,
+    content: String,
+    order: i64,
+    definition_id: i64,
 }
 
 #[utoipa::path(
@@ -146,7 +145,7 @@ pub struct DefinitionContent {
         )
         
 )]
-pub async fn get_definition(Path(slug): Path<String>, state: AppState) -> AppResult<DefinitionResponse> {
+async fn get_definition(Path(slug): Path<String>, state: AppState) -> AppResult<DefinitionResponse> {
     let conn =  state.db_write().await?;
 let result = conn
 .interact(move |conn| {
@@ -159,16 +158,21 @@ let result = conn
         .map_err(AppError::DatabaseQueryError).unwrap();
 
     match definition {
-        Some(v) => {let content: Vec<DefinitionContent> = DefinitionContent::belonging_to(&v)
+        Some(v) => {
+            let content = DefinitionContent::belonging_to(&v)
             .select(DefinitionContent::as_select())
             .load::<DefinitionContent>(conn)
             .map_err(AppError::DatabaseQueryError);
-    
-            Ok(DefinitionResponse {v, content})},
+
+        match content {
+            Ok(q)=>Ok(DefinitionResponse {definition:v, content:q}),
+            Err(e)=> Err(AppError::DoesNotExist)
+        }
+    } ,
         None => Err(AppError::DoesNotExist)
     }   
 })
-.await.map_err(AppError::DatabaseConnectionInteractError).ok_or(AppError::DoesNotExist)?;
+.await??;
 
         Ok(Json(result))
 }

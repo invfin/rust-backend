@@ -3,9 +3,6 @@ use std::{
     time::Duration,
 };
 
-use minijinja::context;
-use serde::{Deserialize, Serialize};
-
 use axum::{
     extract::MatchedPath,
     http::{HeaderValue, Request},
@@ -35,59 +32,21 @@ use tracing::{info_span, Level};
 
 use super::{auth::jwt_middleware, AppState};
 use crate::{
-    companies::handlers::{routes as companies_routes, ApiDoc as CompaniesDoc},
-    server::{AppError, AppJson, ErrorMessage},
+    companies::handlers::{
+        companies::{routes as companies_routes, ApiDoc as ApiDocCompanies},
+        routes::{routes as companies_helpers_routes, ApiDoc as ApiDocCompaniesHelpers},
+    },
+    dictionary::handlers::{routes as dictionary_routes, ApiDoc as ApiDocDictionary},
+    server::ErrorMessage,
+    transactions::handlers::{
+        expenses_routes, incomes_routes, investments_routes, ApiDocExpenses, ApiDocIncomes,
+        ApiDocInvestments,
+    },
     users::handlers::{routes as users_routes, ApiDoc as UsersDoc},
 };
 
-use utoipa::{
-    openapi::security::{ApiKey, ApiKeyValue, HttpAuthScheme, HttpBuilder, SecurityScheme},
-    Modify, OpenApi,
-};
 use utoipa_scalar::{Scalar, Servable as ScalarServable};
 
-#[derive(OpenApi)]
-#[openapi(
-    modifiers(&SecurityAddon),
-    security(("jwt" = ["*"])),
-    servers(
-        (url = "http://{domain}:{port}/api/{version}", description = "Local server",
-            variables(
-                ("domain" = (default = "127.0.0.1", description = "Default domain for API")),
-                ("port" = (default = "8000", enum_values("8000", "5000", "3030"), description = "Supported ports for API")),
-                ("version" = (default = "v1", description = "Supported versions for API")),
-            )
-        )),
-    nest(
-        (path = "/", api = UsersDoc, tags = ["Users"]),
-        (path = "/", api = CompaniesDoc, tags = ["Companies"]),
-    ),
-    components(
-        schemas(ErrorMessage),
-        responses(ErrorMessage)
-    ),
-)]
-struct ApiDoc;
-
-struct SecurityAddon;
-
-impl Modify for SecurityAddon {
-    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
-        if let Some(components) = openapi.components.as_mut() {
-            components.add_security_scheme(
-                "jwt",
-                SecurityScheme::Http(
-                    HttpBuilder::new()
-                        .scheme(HttpAuthScheme::Bearer)
-                        .bearer_format("JWT")
-                        .build(),
-                ),
-            )
-        }
-    }
-}
-
-// A `MakeRequestId` that increments an atomic counter
 #[derive(Clone, Default)]
 struct MyMakeRequestId {
     counter: Arc<AtomicU64>,
@@ -125,10 +84,14 @@ fn post_cors() -> CorsLayer {
 fn api_routes(state: AppState) -> Router<AppState> {
     Router::new()
         .merge(companies_routes(state.clone()))
-        .layer(from_fn_with_state(state.clone(), jwt_middleware))
+        .merge(companies_helpers_routes(state.clone()))
         .merge(users_routes(state.clone()))
+        .merge(expenses_routes(state.clone()))
+        .merge(incomes_routes(state.clone()))
+        .merge(investments_routes(state.clone()))
+        .layer(from_fn_with_state(state.clone(), jwt_middleware))
         .layer(post_cors())
-        // .layer(AsyncRequireAuthorizationLayer::new(MyAuth))
+        .merge(dictionary_routes(state.clone()))
         .with_state(state)
 }
 
@@ -138,47 +101,6 @@ async fn home() -> Response {
 
 async fn error_404() -> Response {
     (StatusCode::NOT_FOUND, Html("<h1>Nothing to see here</h1>")).into_response()
-}
-
-#[derive(Serialize, Deserialize)]
-struct Site<'a> {
-    name: &'a str,
-    url: &'a str,
-    img: &'a str,
-}
-
-async fn handler_index(state: AppState) -> Result<Html<String>, StatusCode> {
-    let template = state.templates.get_template("home").unwrap();
-    let some_example_entries = vec![
-        Site {
-            name: "portainer",
-            url: "http://portainer.raspi",
-            img: "https://www.portainer.io/hubfs/portainer-logo-black.svg",
-        },
-        Site {
-            name: "pihole",
-            url: "http://pihole.raspi/admin",
-            img: "https://camo.githubusercontent.com/5e788319ebef8b0c2bd64b8284690fabc29abdf2d3e00ff84cf05d0027e595a9/68747470733a2f2f70692d686f6c652e6769746875622e696f2f67726170686963732f566f727465782f566f727465785f776974685f746578742e706e67",
-        },
-        Site {
-            name: "nginx",
-            url: "http://nginx.raspi",
-            img: "https://nginxproxymanager.com/logo.svg"
-        },
-        Site {
-            name: "cinema",
-            url: "http://cinema.raspi",
-            img: "https://static.vecteezy.com/system/resources/previews/012/262/720/non_2x/creative-cinema-logo-design-greeting-card-banner-poster-illustration-vector.jpg"
-        },
-    ];
-    let rendered = template
-        .render(context! {
-            title => "Home",
-            entries => some_example_entries,
-        })
-        .unwrap();
-
-    Ok(Html(rendered))
 }
 
 pub fn get_router(state: AppState) -> Router<()> {
@@ -234,7 +156,6 @@ pub fn get_router(state: AppState) -> Router<()> {
 
     Router::new()
         .route("/", get(home))
-        .route("/index", get(handler_index))
         .merge(Scalar::with_url("/scalar", ApiDoc::openapi()))
         .nest("/api/:version/", api_routes(state.clone()))
         .fallback(error_404)

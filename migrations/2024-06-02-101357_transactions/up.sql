@@ -18,7 +18,7 @@ CREATE TABLE expenses (
     date TIMESTAMP NOT NULL,
     description TEXT,
     comment TEXT,
-    currency_id BIGINT REFERENCES currencies(id) ON DELETE CASCADE,
+    currency_id BIGINT NOT NULL REFERENCES currencies(id) ON DELETE CASCADE,
     amount_converted numeric NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP

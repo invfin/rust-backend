@@ -8,6 +8,7 @@ mod companies;
 mod db;
 mod dictionary;
 mod server;
+mod transactions;
 mod users;
 
 #[macro_use]
