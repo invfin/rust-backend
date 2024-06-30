@@ -77,7 +77,7 @@ async fn list_exchanges(state: AppState) -> AppResult<Vec<Exchange>> {
 
 #[utoipa::path(
     post,
-    path = "/exchanges",
+    path = "exchanges",
     request_body = Exchange,
     responses(
         (status = 200, body = Exchange, description = "Create a new exchange"),
@@ -104,7 +104,7 @@ async fn create_exchange(
 
 #[utoipa::path(
     get,
-    path = "/exchanges/{id}",
+    path = "exchanges/{id}",
     params(
         ("id" = i64, Path, description = "Exchange ID")
     ),
@@ -130,7 +130,7 @@ async fn read_exchange(Path(id): Path<i64>, state: AppState) -> AppResult<Exchan
 
 #[utoipa::path(
     put,
-    path = "/exchanges/{id}",
+    path = "exchanges/{id}",
     params(
         ("id" = i64, Path, description = "Exchange ID")
     ),
@@ -161,7 +161,7 @@ async fn update_exchange(
 
 #[utoipa::path(
     delete,
-    path = "/exchanges/{id}",
+    path = "exchanges/{id}",
     params(
         ("id" = i64, Path, description = "Exchange ID")
     ),

@@ -75,7 +75,7 @@ async fn list_countries(state: AppState) -> AppResult<Vec<Country>> {
 
 #[utoipa::path(
     post,
-    path = "/countries",
+    path = "countries",
     request_body = Country,
     responses(
         (status = 200, body = Country, description = "Create a new country"),
@@ -99,7 +99,7 @@ async fn create_country(state: AppState, Json(country): Json<Country>) -> AppRes
 
 #[utoipa::path(
     get,
-    path = "/countries/{id}",
+    path = "countries/{id}",
     params(
         ("id" = i64, Path, description = "Country ID")
     ),
@@ -125,7 +125,7 @@ async fn read_country(Path(id): Path<i64>, state: AppState) -> AppResult<Country
 
 #[utoipa::path(
     put,
-    path = "/countries/{id}",
+    path = "countries/{id}",
     params(
         ("id" = i64, Path, description = "Country ID")
     ),
@@ -156,7 +156,7 @@ async fn update_country(
 
 #[utoipa::path(
     delete,
-    path = "/countries/{id}",
+    path = "countries/{id}",
     params(("id" = i64, Path, description = "Country ID")),
     responses(
         (status = 200, body = usize, description = "Delete a country by ID"),

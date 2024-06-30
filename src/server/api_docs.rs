@@ -1,6 +1,7 @@
 use crate::{
     companies::ApiDoc as ApiDocCompanies,
     countries::ApiDoc as ApiDocCountries,
+    currencies::ApiDoc as ApiDocCurrencies,
     dictionary::ApiDoc as ApiDocDictionary,
     exchanges::ApiDoc as ApiDocExchanges,
     industries::ApiDoc as ApiDocIndustries,
@@ -29,6 +30,7 @@ use utoipa::{
         )),
     nest(
         (path = "/", api = ApiDocUsers, tags = ["Users"]),
+        (path = "/", api = ApiDocCurrencies, tags = ["Currencies"]),
         (path = "/", api = ApiDocExpenses, tags = ["Expenses"]),
         (path = "/", api = ApiDocIncomes, tags = ["Incomes"]),
         (path = "/", api = ApiDocInvestments, tags = ["Investments"]),

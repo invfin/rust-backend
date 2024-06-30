@@ -70,7 +70,7 @@ async fn list_sectors(state: AppState) -> AppResult<Vec<Sector>> {
 
 #[utoipa::path(
     post,
-    path = "/sectors",
+    path = "sectors",
     request_body = Sector,
     responses(
         (status = 200, body = Sector, description = "Create a new sector"),
@@ -94,7 +94,7 @@ async fn create_sector(state: AppState, Json(sector): Json<Sector>) -> AppResult
 
 #[utoipa::path(
     get,
-    path = "/sectors/{id}",
+    path = "sectors/{id}",
     params(
         ("id" = i64, Path, description = "Sector ID")
     ),
@@ -120,7 +120,7 @@ async fn read_sector(Path(id): Path<i64>, state: AppState) -> AppResult<Sector> 
 
 #[utoipa::path(
     put,
-    path = "/sectors/{id}",
+    path = "sectors/{id}",
     params(
         ("id" = i64, Path, description = "Sector ID")
     ),
@@ -151,7 +151,7 @@ async fn update_sector(
 
 #[utoipa::path(
     delete,
-    path = "/sectors/{id}",
+    path = "sectors/{id}",
     params(
         ("id" = i64, Path, description = "Sector ID")
     ),

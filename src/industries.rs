@@ -70,7 +70,7 @@ async fn list_industries(state: AppState) -> AppResult<Vec<Industry>> {
 
 #[utoipa::path(
     post,
-    path = "/industries",
+    path = "industries",
     request_body = Industry,
     responses(
         (status = 200, body = Industry, description = "Create a new industry"),
@@ -97,7 +97,7 @@ async fn create_industry(
 
 #[utoipa::path(
     get,
-    path = "/industries/{id}",
+    path = "industries/{id}",
     params(
         ("id" = i64, Path, description = "Industry ID")
     ),
@@ -123,7 +123,7 @@ async fn read_industry(Path(id): Path<i64>, state: AppState) -> AppResult<Indust
 
 #[utoipa::path(
     put,
-    path = "/industries/{id}",
+    path = "industries/{id}",
     params(
         ("id" = i64, Path, description = "Industry ID")
     ),
@@ -154,7 +154,7 @@ async fn update_industry(
 
 #[utoipa::path(
     delete,
-    path = "/industries/{id}",
+    path = "industries/{id}",
     params(
         ("id" = i64, Path, description = "Industry ID")
     ),

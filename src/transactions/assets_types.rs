@@ -14,7 +14,7 @@ pub struct AssetType {
 
 #[utoipa::path(
     post,
-    path = "/asset_types",
+    path = "asset_types",
     request_body = AssetType,
     responses(
         (status = 200, body = AssetType, description = "Create a new asset type"),
@@ -23,8 +23,8 @@ pub struct AssetType {
     )
 )]
 pub async fn create_asset_type(
-    state: AppState,Json(asset_type): Json<AssetType>,
-    
+    state: AppState,
+    Json(asset_type): Json<AssetType>,
 ) -> AppResult<AssetType> {
     let conn = state.db_write().await?;
     let result = conn
@@ -41,7 +41,7 @@ pub async fn create_asset_type(
 
 #[utoipa::path(
     get,
-    path = "/asset_types/{id}",
+    path = "asset_types/{id}",
     params(
         ("id" = i64, Path, description = "AssetType ID")
     ),
@@ -67,7 +67,7 @@ pub async fn read_asset_type(Path(id): Path<i64>, state: AppState) -> AppResult<
 
 #[utoipa::path(
     put,
-    path = "/asset_types/{id}",
+    path = "asset_types/{id}",
     params(
         ("id" = i64, Path, description = "AssetType ID")
     ),
@@ -80,8 +80,8 @@ pub async fn read_asset_type(Path(id): Path<i64>, state: AppState) -> AppResult<
 )]
 pub async fn update_asset_type(
     Path(id): Path<i64>,
-    state: AppState,Json(asset_type): Json<AssetType>,
-    
+    state: AppState,
+    Json(asset_type): Json<AssetType>,
 ) -> AppResult<AssetType> {
     let conn = state.db_write().await?;
     let result = conn
@@ -98,7 +98,7 @@ pub async fn update_asset_type(
 
 #[utoipa::path(
     delete,
-    path = "/asset_types/{id}",
+    path = "asset_types/{id}",
     params(
         ("id" = i64, Path, description = "AssetType ID")
     ),
