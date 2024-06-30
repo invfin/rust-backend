@@ -42,6 +42,13 @@ enum Status {
 )]
 pub struct ApiDoc;
 
+pub fn routes(state: AppState) -> Router<AppState> {
+    Router::new()
+        .route("/diccionario-financiero", get(list_definitions))
+        .route("/definicion/:slug",
+            get(get_definition)
+        ).with_state(state)
+}
 
 #[derive(Queryable, Debug, Serialize, Deserialize, Selectable, ToResponse, ToSchema)]
 #[diesel(table_name = definitions)]
@@ -175,12 +182,4 @@ let result = conn
 .await??;
 
         Ok(Json(result))
-}
-
-pub fn routes(state: AppState) -> Router<AppState> {
-    Router::new()
-        .route("/diccionario-financiero", get(list_definitions))
-        .route("/definicion/:slug",
-            get(get_definition)
-        ).with_state(state)
 }

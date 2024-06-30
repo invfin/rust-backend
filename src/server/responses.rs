@@ -3,10 +3,34 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Json, Response},
 };
-use serde::Serialize;
-use utoipa::{ToResponse, ToSchema};
+use serde::{Deserialize, Serialize};
+use utoipa::{IntoParams, ToResponse, ToSchema};
 
 pub type AppResult<T> = std::result::Result<Json<T>, AppError>;
+
+#[derive(Debug, Serialize, Deserialize, IntoParams)]
+pub struct PaginatedQuery<T> {
+    #[serde(flatten)]
+    query: T,
+
+    page: Option<i64>,
+    per_page: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToResponse, ToSchema)]
+pub struct PaginatedResponse<T> {
+    data: Vec<T>,
+    total_pages: i64,
+}
+
+impl<T> PaginatedResponse<T> {
+    pub fn new(data: Vec<T>, total_pages: i64) -> Self {
+        Self { data, total_pages }
+    }
+    pub fn response(data: Vec<T>, total_pages: i64) -> AppResult<Self> {
+        Ok(Json(Self::new(data, total_pages)))
+    }
+}
 
 #[derive(FromRequest)]
 #[from_request(via(axum::Json), rejection(AppError))]

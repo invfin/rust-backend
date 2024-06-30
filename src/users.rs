@@ -36,6 +36,13 @@ use utoipa;
 )]
 pub struct ApiDoc;
 
+pub fn routes(state: AppState) -> Router<AppState> {
+    Router::new()
+        .route("/login", post(login))
+        .route("/register", post(register))
+        .with_state(state)
+}
+
 fn hash_password(password: &str) -> String {
     let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
@@ -47,18 +54,18 @@ fn hash_password(password: &str) -> String {
 
 #[derive(Debug, Deserialize, Serialize, Insertable)]
 #[diesel(table_name = users)]
-pub struct NewUser {
-    pub username: String,
-    pub email: String,
-    pub is_active: bool,
-    pub is_superuser: bool,
-    pub is_staff: bool,
-    pub is_test: bool,
-    pub password: String,
+struct NewUser {
+    username: String,
+    email: String,
+    is_active: bool,
+    is_superuser: bool,
+    is_staff: bool,
+    is_test: bool,
+    password: String,
 }
 
 impl NewUser {
-    pub fn new(query_params: RegisterPayload) -> Self {
+    fn new(query_params: RegisterPayload) -> Self {
         Self {
             username: query_params.username,
             email: query_params.email,
@@ -72,32 +79,32 @@ impl NewUser {
 }
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
-pub struct LoginPayload {
-    pub email: String,
-    pub password: String,
+struct LoginPayload {
+    email: String,
+    password: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
-pub struct RegisterPayload {
-    pub username: String,
-    pub email: String,
-    pub password: String,
+struct RegisterPayload {
+    username: String,
+    email: String,
+    password: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Queryable, Selectable)]
 #[diesel(table_name = users)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct LoginUser {
-    pub id: i64,
-    pub username: String,
-    pub email: String,
+struct LoginUser {
+    id: i64,
+    username: String,
+    email: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToResponse, ToSchema)]
-pub struct LoginResponse {
-    pub username: String,
-    pub email: String,
-    pub token: String,
+struct LoginResponse {
+    username: String,
+    email: String,
+    token: String,
 }
 
 impl LoginResponse {
@@ -121,7 +128,7 @@ impl LoginResponse {
             (status = "5XX", body = ErrorMessage, description = "Opusi daisy"),
         )
 )]
-pub async fn login(
+async fn login(
     state: AppState,
     AppJson(payload): AppJson<LoginPayload>,
 ) -> AppResult<LoginResponse> {
@@ -157,7 +164,7 @@ pub async fn login(
             (status = "5XX", body = ErrorMessage, description = "Opusi daisy"),
         )
 )]
-pub async fn register(
+async fn register(
     state: AppState,
     AppJson(payload): AppJson<RegisterPayload>,
 ) -> AppResult<LoginResponse> {
@@ -173,11 +180,4 @@ pub async fn register(
         .await
         .map_err(AppError::DatabaseConnectionInteractError)??;
     LoginResponse::new(&user, &state).await
-}
-
-pub fn routes(state: AppState) -> Router<AppState> {
-    Router::new()
-        .route("/login", post(login))
-        .route("/register", post(register))
-        .with_state(state)
 }

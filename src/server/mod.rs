@@ -1,3 +1,4 @@
+mod api_docs;
 mod auth;
 mod config;
 mod responses;
@@ -7,6 +8,7 @@ mod tracing;
 mod ulid;
 mod versioning;
 
+pub use api_docs::ApiDoc;
 pub use auth::create_token;
 pub use config::{Config, EnvIs};
 pub use responses::{AppError, AppJson, AppResult, ErrorMessage};

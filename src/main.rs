@@ -1,12 +1,11 @@
-//! Checkout the [diesel webpage](https://diesel.rs) for
-//! longer guides about diesel
-//!
-//! Checkout the [crates.io source code](https://github.com/rust-lang/crates.io/)
-//! for a real world application using axum and diesel
-
 mod companies;
+mod countries;
+mod currencies;
 mod db;
 mod dictionary;
+mod exchanges;
+mod industries;
+mod sectors;
 mod server;
 mod transactions;
 mod users;

@@ -8,12 +8,12 @@ use axum::{
     http::{HeaderValue, Request},
     middleware::from_fn_with_state,
     response::{Html, IntoResponse, Response},
-    routing::{get, post},
+    routing::get,
     Router,
 };
 use hyper::{
     header::{AUTHORIZATION, CONTENT_TYPE, COOKIE},
-    http, Method, StatusCode,
+    Method, StatusCode,
 };
 use tower::ServiceBuilder;
 use tower_http::{
@@ -29,79 +29,21 @@ use tower_http::{
     LatencyUnit, ServiceBuilderExt,
 };
 use tracing::{info_span, Level};
-
-use super::{auth::jwt_middleware, AppState};
-use crate::{
-    companies::handlers::{
-        companies::{routes as companies_routes, ApiDoc as ApiDocCompanies},
-        routes::{routes as companies_helpers_routes, ApiDoc as ApiDocCompaniesHelpers},
-    },
-    dictionary::handlers::{routes as dictionary_routes, ApiDoc as ApiDocDictionary},
-    server::ErrorMessage,
-    transactions::handlers::{
-        expenses_routes, incomes_routes, investments_routes, ApiDocExpenses, ApiDocIncomes,
-        ApiDocInvestments,
-    },
-    users::handlers::{routes as users_routes, ApiDoc as UsersDoc},
-};
-
+use utoipa::OpenApi;
 use utoipa_scalar::{Scalar, Servable as ScalarServable};
 
-#[derive(Clone, Default)]
-struct MyMakeRequestId {
-    counter: Arc<AtomicU64>,
-}
-
-use std::sync::atomic::Ordering;
-
-impl MakeRequestId for MyMakeRequestId {
-    fn make_request_id<B>(&mut self, request: &Request<B>) -> Option<RequestId> {
-        let request_id = self
-            .counter
-            .fetch_add(1, Ordering::SeqCst)
-            .to_string()
-            .parse()
-            .unwrap();
-
-        Some(RequestId::new(request_id))
-    }
-}
-
-fn get_cors() -> CorsLayer {
-    CorsLayer::new()
-        .allow_methods([Method::GET])
-        .allow_headers([CONTENT_TYPE, AUTHORIZATION])
-        .allow_origin(Any)
-}
-
-fn post_cors() -> CorsLayer {
-    CorsLayer::new()
-        .allow_methods([Method::POST])
-        .allow_headers([CONTENT_TYPE])
-        .allow_origin(Any)
-}
-
-fn api_routes(state: AppState) -> Router<AppState> {
-    Router::new()
-        .merge(companies_routes(state.clone()))
-        .merge(companies_helpers_routes(state.clone()))
-        .merge(users_routes(state.clone()))
-        .merge(expenses_routes(state.clone()))
-        .merge(incomes_routes(state.clone()))
-        .merge(investments_routes(state.clone()))
-        .layer(from_fn_with_state(state.clone(), jwt_middleware))
-        .layer(post_cors())
-        .merge(dictionary_routes(state.clone()))
-        .with_state(state)
-}
-
-async fn home() -> Response {
-    (StatusCode::OK, Html("<h1>Welcome to Elerem</h1>")).into_response()
-}
-
-async fn error_404() -> Response {
-    (StatusCode::NOT_FOUND, Html("<h1>Nothing to see here</h1>")).into_response()
-}
+use super::{api_docs::ApiDoc, auth::jwt_middleware, AppState};
+use crate::{
+    companies::routes as companies_routes,
+    countries::routes as countries_routes,
+    currencies::routes as currencies_routes,
+    dictionary::routes as dictionary_routes,
+    exchanges::routes as exchanges_routes,
+    industries::routes as industries_routes,
+    sectors::routes as sectors_routes,
+    transactions::{expenses_routes, incomes_routes, investments_routes},
+    users::routes as users_routes,
+};
 
 pub fn get_router(state: AppState) -> Router<()> {
     let sensitive_headers: Arc<[_]> = vec![AUTHORIZATION, COOKIE].into();
@@ -161,4 +103,64 @@ pub fn get_router(state: AppState) -> Router<()> {
         .fallback(error_404)
         .layer(middleware)
         .with_state(state)
+}
+
+#[derive(Clone, Default)]
+struct MyMakeRequestId {
+    counter: Arc<AtomicU64>,
+}
+
+use std::sync::atomic::Ordering;
+
+impl MakeRequestId for MyMakeRequestId {
+    fn make_request_id<B>(&mut self, request: &Request<B>) -> Option<RequestId> {
+        let request_id = self
+            .counter
+            .fetch_add(1, Ordering::SeqCst)
+            .to_string()
+            .parse()
+            .unwrap();
+
+        Some(RequestId::new(request_id))
+    }
+}
+
+fn get_cors() -> CorsLayer {
+    CorsLayer::new()
+        .allow_methods([Method::GET])
+        .allow_headers([CONTENT_TYPE, AUTHORIZATION])
+        .allow_origin(Any)
+}
+
+fn post_cors() -> CorsLayer {
+    CorsLayer::new()
+        .allow_methods([Method::POST])
+        .allow_headers([CONTENT_TYPE])
+        .allow_origin(Any)
+}
+
+fn api_routes(state: AppState) -> Router<AppState> {
+    Router::new()
+        .merge(countries_routes(state.clone()))
+        .merge(companies_routes(state.clone()))
+        .merge(exchanges_routes(state.clone()))
+        .merge(currencies_routes(state.clone()))
+        .merge(industries_routes(state.clone()))
+        .merge(sectors_routes(state.clone()))
+        .merge(users_routes(state.clone()))
+        .merge(expenses_routes(state.clone()))
+        .merge(incomes_routes(state.clone()))
+        .merge(investments_routes(state.clone()))
+        .merge(dictionary_routes(state.clone()))
+        .layer(from_fn_with_state(state.clone(), jwt_middleware))
+        .layer(post_cors())
+        .with_state(state)
+}
+
+async fn home() -> Response {
+    (StatusCode::OK, Html("<h1>Welcome to Elerem</h1>")).into_response()
+}
+
+async fn error_404() -> Response {
+    (StatusCode::NOT_FOUND, Html("<h1>Nothing to see here</h1>")).into_response()
 }

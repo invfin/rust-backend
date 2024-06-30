@@ -3,37 +3,76 @@ use crate::{
     server::{AppError, AppResult},
     AppState,
 };
-use axum::{extract::Path, Json};
+
+use axum::{
+    extract::Path,
+    routing::{get, post},
+    Json, Router,
+};
 use diesel::prelude::*;
+
 use serde::{Deserialize, Serialize};
-use utoipa::{self, ToResponse};
-use utoipa::OpenApi;
-use utoipa::ToSchema;
+use utoipa::{self,OpenApi,ToSchema, ToResponse};
 
 #[derive(OpenApi)]
 #[openapi(
-        paths(
-            create_exchange, delete_exchange, read_exchange, update_exchange
-        ),
-        components(schemas(Exchange), 
+    paths(create_exchange, delete_exchange, read_exchange, update_exchange, list_exchanges),
+    components(schemas(Exchange), 
     responses(Exchange)),
-    security(
-        ("token_jwt" = [])
-    )
-    )]
+    security(("token_jwt" = []))
+)]
 pub struct ApiDoc;
 
+pub fn routes(state: AppState) -> Router<AppState> {
+    Router::new()
+        .route(
+            "/exchanges",
+            post(create_exchange).get(list_exchanges),
+        )
+        .route(
+            "/exchanges/:id",
+            get(read_exchange)
+                .put(update_exchange)
+                .delete(delete_exchange),
+        ).with_state(state)
+}
 
-#[derive(Queryable, Insertable, AsChangeset, Serialize, Deserialize, ToSchema, ToResponse)]
+
+#[derive(Queryable, Insertable, AsChangeset, Serialize, Deserialize, Selectable,ToSchema, ToResponse)]
 #[diesel(table_name = exchanges)]
-pub struct Exchange {
-    pub id: i64,
-    pub name: String,
-    pub ticker: String,
-    pub country_id: Option<i64>,
-    pub image: String,
-    pub created_at: chrono::NaiveDateTime,
-    pub updated_at: chrono::NaiveDateTime,
+#[diesel(check_for_backend(diesel::pg::Pg))]
+struct Exchange {
+    id: i64,
+    name: String,
+    ticker: String,
+    country_id: Option<i64>,
+    image: String,
+    created_at: chrono::NaiveDateTime,
+    updated_at: chrono::NaiveDateTime,
+}
+
+#[utoipa::path(
+    get, 
+    path = "exchanges",
+    responses(
+            (status = 200, body = Vec<Exchange>, description = "A paginated result of exchanges with key information"),
+            (status = "4XX", body = ErrorMessage, description = "Opusi daisy"),
+            (status = "5XX", body = ErrorMessage, description = "Opusi daisy"),
+        )
+        
+)]
+async fn list_exchanges(state: AppState) -> AppResult<Vec<Exchange>> {
+    let conn =  state.db_write().await?;
+    let query = conn
+        .interact(move |conn| {
+            exchanges::table
+                .select(Exchange::as_select())
+                .load::<Exchange>(conn).map_err(AppError::DatabaseQueryError)
+                
+        })
+        .await.map_err(AppError::DatabaseConnectionInteractError)??;
+
+        Ok(Json(query))
 }
 
 #[utoipa::path(
@@ -46,7 +85,7 @@ pub struct Exchange {
         (status = "5XX", body = ErrorMessage, description = "Server error"),
     )
 )]
-pub async fn create_exchange(
+async fn create_exchange(
     state: AppState,
     Json(exchange): Json<Exchange>,
 ) -> AppResult<Exchange> {
@@ -75,7 +114,7 @@ pub async fn create_exchange(
         (status = "5XX", body = ErrorMessage, description = "Server error"),
     )
 )]
-pub async fn read_exchange(Path(id): Path<i64>, state: AppState) -> AppResult<Exchange> {
+async fn read_exchange(Path(id): Path<i64>, state: AppState) -> AppResult<Exchange> {
     let conn = state.db_write().await?;
     let result = conn
         .interact(move |conn| {
@@ -102,7 +141,7 @@ pub async fn read_exchange(Path(id): Path<i64>, state: AppState) -> AppResult<Ex
         (status = "5XX", body = ErrorMessage, description = "Server error"),
     )
 )]
-pub async fn update_exchange(
+async fn update_exchange(
     Path(id): Path<i64>,
     state: AppState,
     Json(exchange): Json<Exchange>,
@@ -132,7 +171,7 @@ pub async fn update_exchange(
         (status = "5XX", body = ErrorMessage, description = "Server error"),
     )
 )]
-pub async fn delete_exchange(Path(id): Path<i64>, state: AppState) -> AppResult<usize> {
+async fn delete_exchange(Path(id): Path<i64>, state: AppState) -> AppResult<usize> {
     let conn = state.db_write().await?;
     Ok(Json(
         conn.interact(move |conn| {
