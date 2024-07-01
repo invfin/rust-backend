@@ -71,7 +71,7 @@ impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, message) = match self {
             AppError::JsonRejection(rejection) => (rejection.status(), rejection.body_text()),
-            AppError::JWTError(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
+            AppError::JWTError(err) => (StatusCode::UNAUTHORIZED, err.to_string()),
             AppError::DatabaseQueryError(err) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }

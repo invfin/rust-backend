@@ -92,8 +92,9 @@ pub async fn jwt_middleware(
     let mut validation = Validation::default();
     validation.set_audience(&[SITE]);
     validation.set_issuer(&[SITE]);
+    validation.leeway = 60 * 60 * 60;
     validation.reject_tokens_expiring_in_less_than = 86400u64;
-    validation.set_required_spec_claims(&["exp", "nbf", "aud", "iss", "sub"]);
+    validation.set_required_spec_claims(&["iss", "sub", "aud", "exp", "iat", "jti", "rol"]);
 
     let token_data = decode::<JWTClaims>(bearer.token(), &state.keys.decoding, &validation)
         .map_err(AppError::JWTError)?;

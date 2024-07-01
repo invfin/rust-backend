@@ -138,6 +138,8 @@ diesel::table! {
         sector_id -> Nullable<Int8>,
         is_adr -> Bool,
         is_fund -> Bool,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
     }
 }
 

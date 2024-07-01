@@ -1,18 +1,19 @@
-1. créer les models:
-- companies
-- exchanges
-- user
-- currencies
-- countries
-- sectors
-- industries
-* reutiliser les données de la base actuelle
+1. Populate:
+- [ ] currencies
+- [ ] countries
+- [ ] dictionary
+- [ ] sectors
+- [ ] industries
+- [ ] a few companies
 
+2. Create workflow to add transactions
+- [ ] Add income CRUD in frontend
+- [ ] Add expense CRUD in frontend
+- [ ] Add investment CRUD in frontend
+- [ ] Exchange rate workflow
+- [ ] Add workflow to populate transactions from files
+- [ ] Add asset_types routes
 
-2. créer les api pour les utiliser depuis le front
-- login, register, logout, token management and auth
-- display list of companies and add some filters
-- display single company
 
 Checkout the [diesel webpage](https://diesel.rs) for
 longer guides about diesel

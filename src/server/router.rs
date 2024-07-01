@@ -147,12 +147,12 @@ fn api_routes(state: AppState) -> Router<AppState> {
         .merge(currencies_routes(state.clone()))
         .merge(industries_routes(state.clone()))
         .merge(sectors_routes(state.clone()))
-        .merge(users_routes(state.clone()))
         .merge(expenses_routes(state.clone()))
         .merge(incomes_routes(state.clone()))
         .merge(investments_routes(state.clone()))
         .merge(dictionary_routes(state.clone()))
         .layer(from_fn_with_state(state.clone(), jwt_middleware))
+        .merge(users_routes(state.clone())) //TODO: implement some auth
         .layer(post_cors())
         .with_state(state)
 }
