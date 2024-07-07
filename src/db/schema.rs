@@ -1,6 +1,20 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
+    assets_details (id) {
+        id -> Int8,
+        #[sql_name = "type"]
+        #[max_length = 50]
+        type_ -> Varchar,
+        #[max_length = 250]
+        name -> Varchar,
+        company_id -> Nullable<Int8>,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     balance_sheet_statements (id) {
         id -> Int8,
         company_id -> Int8,
@@ -336,21 +350,6 @@ diesel::table! {
 }
 
 diesel::table! {
-    expenses (id) {
-        id -> Int8,
-        user_id -> Int8,
-        amount -> Numeric,
-        date -> Timestamp,
-        description -> Nullable<Text>,
-        comment -> Nullable<Text>,
-        currency_id -> Int8,
-        amount_converted -> Numeric,
-        created_at -> Timestamp,
-        updated_at -> Timestamp,
-    }
-}
-
-diesel::table! {
     free_cashflow_ratios (id) {
         id -> Int8,
         company_id -> Int8,
@@ -404,21 +403,6 @@ diesel::table! {
 }
 
 diesel::table! {
-    incomes (id) {
-        id -> Int8,
-        user_id -> Int8,
-        amount -> Numeric,
-        date -> Timestamp,
-        description -> Nullable<Text>,
-        comment -> Nullable<Text>,
-        currency_id -> Int8,
-        amount_converted -> Numeric,
-        created_at -> Timestamp,
-        updated_at -> Timestamp,
-    }
-}
-
-diesel::table! {
     industries (id) {
         id -> Int8,
         #[max_length = 255]
@@ -429,20 +413,15 @@ diesel::table! {
 }
 
 diesel::table! {
-    investments (id) {
+    investment_details (id) {
         id -> Int8,
         fee -> Numeric,
         quantity -> Numeric,
         cost -> Numeric,
-        user_id -> Int8,
         amount -> Numeric,
         date -> Timestamp,
-        description -> Nullable<Text>,
-        comment -> Nullable<Text>,
         currency_id -> Int8,
         amount_converted -> Numeric,
-        #[max_length = 255]
-        asset_type -> Varchar,
         asset_id -> Int8,
         created_at -> Timestamp,
         updated_at -> Timestamp,
@@ -630,6 +609,50 @@ diesel::table! {
 }
 
 diesel::table! {
+    transactions (id) {
+        id -> Int8,
+        user_id -> Int8,
+        details_id -> Int8,
+        exchange_rate_id -> Nullable<Int8>,
+        date -> Timestamp,
+        amount -> Numeric,
+        #[sql_name = "type"]
+        #[max_length = 50]
+        type_ -> Varchar,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    transactions_details (id) {
+        id -> Int8,
+        date -> Timestamp,
+        description -> Nullable<Text>,
+        comment -> Nullable<Text>,
+        file_id -> Nullable<Int8>,
+        currency_id -> Int8,
+        investment_details_id -> Nullable<Int8>,
+        original_amount -> Numeric,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    transactions_files (id) {
+        id -> Int8,
+        user_id -> Int8,
+        #[max_length = 255]
+        name -> Varchar,
+        #[max_length = 255]
+        path -> Varchar,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     users (id) {
         id -> Int8,
         username -> Varchar,
@@ -644,6 +667,7 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(assets_details -> companies (company_id));
 diesel::joinable!(balance_sheet_statements -> companies (company_id));
 diesel::joinable!(balance_sheet_statements -> currencies (reported_currency_id));
 diesel::joinable!(balance_sheet_statements -> periods (period_id));
@@ -671,18 +695,14 @@ diesel::joinable!(enterprise_value_ratios -> companies (company_id));
 diesel::joinable!(enterprise_value_ratios -> currencies (reported_currency_id));
 diesel::joinable!(enterprise_value_ratios -> periods (period_id));
 diesel::joinable!(exchanges -> countries (country_id));
-diesel::joinable!(expenses -> currencies (currency_id));
-diesel::joinable!(expenses -> users (user_id));
 diesel::joinable!(free_cashflow_ratios -> companies (company_id));
 diesel::joinable!(free_cashflow_ratios -> currencies (reported_currency_id));
 diesel::joinable!(free_cashflow_ratios -> periods (period_id));
 diesel::joinable!(income_statements -> companies (company_id));
 diesel::joinable!(income_statements -> currencies (reported_currency_id));
 diesel::joinable!(income_statements -> periods (period_id));
-diesel::joinable!(incomes -> currencies (currency_id));
-diesel::joinable!(incomes -> users (user_id));
-diesel::joinable!(investments -> currencies (currency_id));
-diesel::joinable!(investments -> users (user_id));
+diesel::joinable!(investment_details -> assets_details (asset_id));
+diesel::joinable!(investment_details -> currencies (currency_id));
 diesel::joinable!(liquidity_ratios -> companies (company_id));
 diesel::joinable!(liquidity_ratios -> currencies (reported_currency_id));
 diesel::joinable!(liquidity_ratios -> periods (period_id));
@@ -705,8 +725,16 @@ diesel::joinable!(profiles -> users (user_id));
 diesel::joinable!(rentability_ratios -> companies (company_id));
 diesel::joinable!(rentability_ratios -> currencies (reported_currency_id));
 diesel::joinable!(rentability_ratios -> periods (period_id));
+diesel::joinable!(transactions -> exchange_rates (exchange_rate_id));
+diesel::joinable!(transactions -> transactions_details (details_id));
+diesel::joinable!(transactions -> users (user_id));
+diesel::joinable!(transactions_details -> currencies (currency_id));
+diesel::joinable!(transactions_details -> investment_details (investment_details_id));
+diesel::joinable!(transactions_details -> transactions_files (file_id));
+diesel::joinable!(transactions_files -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
+    assets_details,
     balance_sheet_statements,
     cashflow_statements,
     companies,
@@ -722,12 +750,10 @@ diesel::allow_tables_to_appear_in_same_query!(
     enterprise_value_ratios,
     exchange_rates,
     exchanges,
-    expenses,
     free_cashflow_ratios,
     income_statements,
-    incomes,
     industries,
-    investments,
+    investment_details,
     liquidity_ratios,
     margin_ratios,
     non_gaap_figures,
@@ -738,5 +764,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     profiles,
     rentability_ratios,
     sectors,
+    transactions,
+    transactions_details,
+    transactions_files,
     users,
 );

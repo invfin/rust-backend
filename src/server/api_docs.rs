@@ -7,7 +7,7 @@ use crate::{
     industries::ApiDoc as ApiDocIndustries,
     sectors::ApiDoc as ApiDocSectors,
     server::ErrorMessage,
-    transactions::{ApiDocExpenses, ApiDocIncomes, ApiDocInvestments},
+    transactions::{ApiDocExpenses, ApiDocIncomes, ApiDocInvestments, ApiDocTransactions},
     users::ApiDoc as ApiDocUsers,
 };
 
@@ -40,6 +40,7 @@ use utoipa::{
         (path = "/", api = ApiDocIndustries, tags = ["Industries"]),
         (path = "/", api = ApiDocSectors, tags = ["Sectors"]),
         (path = "/", api = ApiDocCountries, tags = ["Countries"]),
+        (path = "/", api = ApiDocTransactions, tags = ["Transactions"]),
     ),
     components(
         schemas(ErrorMessage),

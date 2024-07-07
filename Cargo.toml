@@ -39,3 +39,4 @@ bigdecimal = { version = "0.4.3", features = ["serde"] }
 utoipa = { version = "=5.0.0-alpha.0", features = ["axum_extras", "chrono", "decimal"] }
 utoipa-scalar = { version = "=0.2.0-alpha.0", features = ["axum"] }
 utoipauto = "0.1.11"
+futures-util = "0.3.30"

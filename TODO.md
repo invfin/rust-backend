@@ -4,7 +4,7 @@
 - [ ] dictionary
 - [ ] sectors
 - [ ] industries
-- [ ] a few companies
+- [ ] companies
 
 2. Create workflow to add transactions
 - [ ] Add income CRUD in frontend

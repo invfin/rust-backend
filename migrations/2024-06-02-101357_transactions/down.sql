@@ -1,3 +1,5 @@
-DROP TABLE incomes;
-DROP TABLE expenses;
-DROP TABLE investments;
+DROP TABLE transactions;
+DROP TABLE transactions_details;
+DROP TABLE investment_details;
+DROP TABLE assets_details;
+DROP TABLE transactions_files;

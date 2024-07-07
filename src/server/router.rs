@@ -41,7 +41,7 @@ use crate::{
     exchanges::routes as exchanges_routes,
     industries::routes as industries_routes,
     sectors::routes as sectors_routes,
-    transactions::{expenses_routes, incomes_routes, investments_routes},
+    transactions::{expenses_routes, incomes_routes, investments_routes, transactions_routes},
     users::routes as users_routes,
 };
 
@@ -94,7 +94,8 @@ pub fn get_router(state: AppState) -> Router<()> {
         .insert_response_header_if_not_present(
             CONTENT_TYPE,
             HeaderValue::from_static("application/octet-stream"),
-        );
+        )
+        .layer(post_cors());
 
     Router::new()
         .route("/", get(home))
@@ -134,8 +135,10 @@ fn get_cors() -> CorsLayer {
 
 fn post_cors() -> CorsLayer {
     CorsLayer::new()
-        .allow_methods([Method::POST])
-        .allow_headers([CONTENT_TYPE])
+        // allow `GET` and `POST` when accessing the resource
+        .allow_methods([Method::GET, Method::POST])
+        .allow_headers([CONTENT_TYPE, AUTHORIZATION])
+        // allow requests from any origin
         .allow_origin(Any)
 }
 
@@ -150,10 +153,10 @@ fn api_routes(state: AppState) -> Router<AppState> {
         .merge(expenses_routes(state.clone()))
         .merge(incomes_routes(state.clone()))
         .merge(investments_routes(state.clone()))
+        .merge(transactions_routes(state.clone()))
         .merge(dictionary_routes(state.clone()))
         .layer(from_fn_with_state(state.clone(), jwt_middleware))
         .merge(users_routes(state.clone())) //TODO: implement some auth
-        .layer(post_cors())
         .with_state(state)
 }
 
