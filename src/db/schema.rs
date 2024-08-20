@@ -1,11 +1,29 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
+    accounts (id) {
+        id -> Int8,
+        date -> Date,
+        user_id -> Int8,
+        #[max_length = 250]
+        name -> Varchar,
+        #[max_length = 250]
+        subcategory -> Varchar,
+        #[max_length = 250]
+        category -> Varchar,
+        #[max_length = 250]
+        company -> Varchar,
+        description -> Nullable<Text>,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     assets_details (id) {
         id -> Int8,
-        #[sql_name = "type"]
         #[max_length = 50]
-        type_ -> Varchar,
+        category -> Varchar,
         #[max_length = 250]
         name -> Varchar,
         company_id -> Nullable<Int8>,
@@ -27,46 +45,46 @@ diesel::table! {
         #[max_length = 255]
         final_link -> Varchar,
         date -> Date,
-        accumulated_other_comprehensive_income_and_loss -> Nullable<Numeric>,
-        accounts_payable -> Nullable<Numeric>,
-        cash_and_cash_equivalents -> Nullable<Numeric>,
-        cash_and_short_term_investments -> Nullable<Numeric>,
-        common_stocks -> Nullable<Numeric>,
-        deferred_revenue -> Nullable<Numeric>,
-        deferred_revenue_non_current -> Nullable<Numeric>,
-        deferred_tax_liabilities_non_current -> Nullable<Numeric>,
-        goodwill -> Nullable<Numeric>,
-        goodwill_and_intangible_assets -> Nullable<Numeric>,
-        intangible_assets -> Nullable<Numeric>,
-        inventory -> Nullable<Numeric>,
-        long_term_debt -> Nullable<Numeric>,
-        long_term_investments -> Nullable<Numeric>,
-        net_debt -> Nullable<Numeric>,
-        net_receivables -> Nullable<Numeric>,
-        other_assets -> Nullable<Numeric>,
-        other_current_assets -> Nullable<Numeric>,
-        other_current_liabilities -> Nullable<Numeric>,
-        other_liabilities -> Nullable<Numeric>,
-        other_non_current_assets -> Nullable<Numeric>,
-        other_non_current_liabilities -> Nullable<Numeric>,
-        other_total_stockholders_equity -> Nullable<Numeric>,
-        preferred_stocks -> Nullable<Numeric>,
-        property_plant_and_equipment -> Nullable<Numeric>,
-        retained_earnings -> Nullable<Numeric>,
-        short_term_debt -> Nullable<Numeric>,
-        short_term_investments -> Nullable<Numeric>,
-        tax_assets -> Nullable<Numeric>,
-        tax_payables -> Nullable<Numeric>,
-        total_assets -> Nullable<Numeric>,
-        total_current_assets -> Nullable<Numeric>,
-        total_current_liabilities -> Nullable<Numeric>,
-        total_debt -> Nullable<Numeric>,
-        total_investments -> Nullable<Numeric>,
-        total_liabilities -> Nullable<Numeric>,
-        total_liabilities_and_total_equity -> Nullable<Numeric>,
-        total_non_current_assets -> Nullable<Numeric>,
-        total_non_current_liabilities -> Nullable<Numeric>,
-        total_stockholders_equity -> Nullable<Numeric>,
+        accumulated_other_comprehensive_income_and_loss -> Float8,
+        accounts_payable -> Float8,
+        cash_and_cash_equivalents -> Float8,
+        cash_and_short_term_investments -> Float8,
+        common_stocks -> Float8,
+        deferred_revenue -> Float8,
+        deferred_revenue_non_current -> Float8,
+        deferred_tax_liabilities_non_current -> Float8,
+        goodwill -> Float8,
+        goodwill_and_intangible_assets -> Float8,
+        intangible_assets -> Float8,
+        inventory -> Float8,
+        long_term_debt -> Float8,
+        long_term_investments -> Float8,
+        net_debt -> Float8,
+        net_receivables -> Float8,
+        other_assets -> Float8,
+        other_current_assets -> Float8,
+        other_current_liabilities -> Float8,
+        other_liabilities -> Float8,
+        other_non_current_assets -> Float8,
+        other_non_current_liabilities -> Float8,
+        other_total_stockholders_equity -> Float8,
+        preferred_stocks -> Float8,
+        property_plant_and_equipment -> Float8,
+        retained_earnings -> Float8,
+        short_term_debt -> Float8,
+        short_term_investments -> Float8,
+        tax_assets -> Float8,
+        tax_payables -> Float8,
+        total_assets -> Float8,
+        total_current_assets -> Float8,
+        total_current_liabilities -> Float8,
+        total_debt -> Float8,
+        total_investments -> Float8,
+        total_liabilities -> Float8,
+        total_liabilities_and_total_equity -> Float8,
+        total_non_current_assets -> Float8,
+        total_non_current_liabilities -> Float8,
+        total_stockholders_equity -> Float8,
     }
 }
 
@@ -83,35 +101,35 @@ diesel::table! {
         #[max_length = 255]
         final_link -> Varchar,
         date -> Date,
-        acquisitions_net -> Nullable<Numeric>,
-        accounts_payable -> Nullable<Numeric>,
-        accounts_receivable -> Nullable<Numeric>,
-        capital_expenditures -> Nullable<Numeric>,
-        cash_beginning_period -> Nullable<Numeric>,
-        cash_end_period -> Nullable<Numeric>,
-        change_in_working_capital -> Nullable<Numeric>,
-        common_stock_issued -> Nullable<Numeric>,
-        common_stock_repurchased -> Nullable<Numeric>,
-        debt_repayment -> Nullable<Numeric>,
-        deferred_income_tax -> Nullable<Numeric>,
-        depreciation_and_amortization -> Nullable<Numeric>,
-        dividends_paid -> Nullable<Numeric>,
-        effect_of_forex_exchange -> Nullable<Numeric>,
-        financing_activities_cash_flow -> Nullable<Numeric>,
-        free_cash_flow -> Nullable<Numeric>,
-        inventory -> Nullable<Numeric>,
-        investing_activities_cash_flow -> Nullable<Numeric>,
-        investments_in_property_plant_and_equipment -> Nullable<Numeric>,
-        net_change_in_cash -> Nullable<Numeric>,
-        net_income -> Nullable<Numeric>,
-        operating_activities_cash_flow -> Nullable<Numeric>,
-        other_financing_activities -> Nullable<Numeric>,
-        other_investing_activities -> Nullable<Numeric>,
-        other_non_cash_items -> Nullable<Numeric>,
-        other_working_capital -> Nullable<Numeric>,
-        purchases_of_investments -> Nullable<Numeric>,
-        sales_and_maturities_of_investments -> Nullable<Numeric>,
-        stock_based_compensation -> Nullable<Numeric>,
+        acquisitions_net -> Float8,
+        accounts_payable -> Float8,
+        accounts_receivable -> Float8,
+        capital_expenditures -> Float8,
+        cash_beginning_period -> Float8,
+        cash_end_period -> Float8,
+        change_in_working_capital -> Float8,
+        common_stock_issued -> Float8,
+        common_stock_repurchased -> Float8,
+        debt_repayment -> Float8,
+        deferred_income_tax -> Float8,
+        depreciation_and_amortization -> Float8,
+        dividends_paid -> Float8,
+        effect_of_forex_exchange -> Float8,
+        financing_activities_cash_flow -> Float8,
+        free_cash_flow -> Float8,
+        inventory -> Float8,
+        investing_activities_cash_flow -> Float8,
+        investments_in_property_plant_and_equipment -> Float8,
+        net_change_in_cash -> Float8,
+        net_income -> Float8,
+        operating_activities_cash_flow -> Float8,
+        other_financing_activities -> Float8,
+        other_investing_activities -> Float8,
+        other_non_cash_items -> Float8,
+        other_working_capital -> Float8,
+        purchases_of_investments -> Float8,
+        sales_and_maturities_of_investments -> Float8,
+        stock_based_compensation -> Float8,
     }
 }
 
@@ -166,16 +184,16 @@ diesel::table! {
         is_ttm -> Bool,
         from_average -> Bool,
         date -> Date,
-        capital_expenditure_growth -> Numeric,
-        cost_of_revenue_growth -> Numeric,
-        earnings_per_share_growth -> Numeric,
-        free_cash_flow_growth -> Numeric,
-        net_income_growth -> Numeric,
-        operating_expenses_growth -> Numeric,
-        owners_earnings_growth -> Numeric,
-        research_and_development_expenses_growth -> Numeric,
-        revenue_growth -> Numeric,
-        shares_buyback -> Numeric,
+        capital_expenditure_growth -> Float8,
+        cost_of_revenue_growth -> Float8,
+        earnings_per_share_growth -> Float8,
+        free_cash_flow_growth -> Float8,
+        net_income_growth -> Float8,
+        operating_expenses_growth -> Float8,
+        owners_earnings_growth -> Float8,
+        research_and_development_expenses_growth -> Float8,
+        revenue_growth -> Float8,
+        shares_buyback -> Float8,
     }
 }
 
@@ -289,17 +307,17 @@ diesel::table! {
         is_ttm -> Bool,
         from_average -> Bool,
         date -> Date,
-        accounts_payable_turnover -> Numeric,
-        asset_turnover -> Numeric,
-        cash_conversion_cycle -> Numeric,
-        cash_conversion_ratio -> Numeric,
-        days_inventory_outstanding -> Numeric,
-        days_payables_outstanding -> Numeric,
-        days_sales_outstanding -> Numeric,
-        fixed_asset_turnover -> Numeric,
-        free_cash_flow_to_operating_cash_flow -> Numeric,
-        inventory_turnover -> Numeric,
-        operating_cycle -> Numeric,
+        accounts_payable_turnover -> Float8,
+        asset_turnover -> Float8,
+        cash_conversion_cycle -> Float8,
+        cash_conversion_ratio -> Float8,
+        days_inventory_outstanding -> Float8,
+        days_payables_outstanding -> Float8,
+        days_sales_outstanding -> Float8,
+        fixed_asset_turnover -> Float8,
+        free_cash_flow_to_operating_cash_flow -> Float8,
+        inventory_turnover -> Float8,
+        operating_cycle -> Float8,
     }
 }
 
@@ -312,13 +330,13 @@ diesel::table! {
         is_ttm -> Bool,
         from_average -> Bool,
         date -> Date,
-        company_equity_multiplier -> Numeric,
-        enterprise_value -> Numeric,
-        enterprise_value_to_free_cash_flow -> Numeric,
-        enterprise_value_to_operating_cash_flow -> Numeric,
-        enterprise_value_to_sales -> Numeric,
-        enterprise_value_multiple -> Numeric,
-        market_capitalization -> Numeric,
+        company_equity_multiplier -> Float8,
+        enterprise_value -> Float8,
+        enterprise_value_to_free_cash_flow -> Float8,
+        enterprise_value_to_operating_cash_flow -> Float8,
+        enterprise_value_to_sales -> Float8,
+        enterprise_value_multiple -> Float8,
+        market_capitalization -> Float8,
     }
 }
 
@@ -327,8 +345,13 @@ diesel::table! {
         id -> Int8,
         base_id -> Int8,
         target_id -> Int8,
-        conversion_rate -> Numeric,
-        date -> Timestamp,
+        #[max_length = 255]
+        conversion_rate -> Varchar,
+        precision -> Int4,
+        scale -> Int4,
+        date -> Date,
+        #[max_length = 255]
+        source -> Nullable<Varchar>,
         created_at -> Timestamp,
         updated_at -> Timestamp,
     }
@@ -350,6 +373,21 @@ diesel::table! {
 }
 
 diesel::table! {
+    fees (id) {
+        id -> Int8,
+        date -> Date,
+        description -> Nullable<Text>,
+        active -> Nullable<Bool>,
+        account_id -> Int8,
+        #[max_length = 250]
+        recurrence -> Varchar,
+        amount -> Numeric,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     free_cashflow_ratios (id) {
         id -> Int8,
         company_id -> Int8,
@@ -358,11 +396,11 @@ diesel::table! {
         is_ttm -> Bool,
         from_average -> Bool,
         date -> Date,
-        free_cash_flow -> Numeric,
-        free_cash_flow_equity -> Numeric,
-        unlevered_free_cash_flow -> Numeric,
-        unlevered_free_cash_flow_ebit -> Numeric,
-        owners_earnings -> Numeric,
+        free_cash_flow -> Float8,
+        free_cash_flow_equity -> Float8,
+        unlevered_free_cash_flow -> Float8,
+        unlevered_free_cash_flow_ebit -> Float8,
+        owners_earnings -> Float8,
     }
 }
 
@@ -379,26 +417,26 @@ diesel::table! {
         #[max_length = 255]
         final_link -> Varchar,
         date -> Date,
-        cost_and_expenses -> Nullable<Numeric>,
-        cost_of_revenue -> Nullable<Numeric>,
-        depreciation_and_amortization -> Nullable<Numeric>,
-        earnings_before_interest_taxes_depreciation_and_amortization -> Nullable<Numeric>,
-        general_and_administrative_expenses -> Nullable<Numeric>,
-        gross_profit -> Nullable<Numeric>,
-        income_before_tax -> Nullable<Numeric>,
-        income_tax_expenses -> Nullable<Numeric>,
-        interest_expense -> Nullable<Numeric>,
-        net_income -> Nullable<Numeric>,
-        net_total_other_income_and_expenses -> Nullable<Numeric>,
-        operating_expenses -> Nullable<Numeric>,
-        operating_income -> Nullable<Numeric>,
-        other_expenses -> Nullable<Numeric>,
-        research_and_development_expenses -> Nullable<Numeric>,
-        revenue -> Nullable<Numeric>,
-        selling_and_marketing_expenses -> Nullable<Numeric>,
-        selling_general_and_administrative_expenses -> Nullable<Numeric>,
-        weighted_average_diluted_shares_outstanding -> Nullable<Numeric>,
-        weighted_average_shares_outstanding -> Nullable<Numeric>,
+        cost_and_expenses -> Float8,
+        cost_of_revenue -> Float8,
+        depreciation_and_amortization -> Float8,
+        earnings_before_interest_taxes_depreciation_and_amortization -> Float8,
+        general_and_administrative_expenses -> Float8,
+        gross_profit -> Float8,
+        income_before_tax -> Float8,
+        income_tax_expenses -> Float8,
+        interest_expense -> Float8,
+        net_income -> Float8,
+        net_total_other_income_and_expenses -> Float8,
+        operating_expenses -> Float8,
+        operating_income -> Float8,
+        other_expenses -> Float8,
+        research_and_development_expenses -> Float8,
+        revenue -> Float8,
+        selling_and_marketing_expenses -> Float8,
+        selling_general_and_administrative_expenses -> Float8,
+        weighted_average_diluted_shares_outstanding -> Float8,
+        weighted_average_shares_outstanding -> Float8,
     }
 }
 
@@ -419,7 +457,7 @@ diesel::table! {
         quantity -> Numeric,
         cost -> Numeric,
         amount -> Numeric,
-        date -> Timestamp,
+        date -> Date,
         currency_id -> Int8,
         amount_converted -> Numeric,
         asset_id -> Int8,
@@ -437,11 +475,11 @@ diesel::table! {
         is_ttm -> Bool,
         from_average -> Bool,
         date -> Date,
-        cash_ratio -> Numeric,
-        current_ratio -> Numeric,
-        debt_to_equity_ratio -> Numeric,
-        operating_cash_flow_ratio -> Numeric,
-        quick_ratio -> Numeric,
+        cash_ratio -> Float8,
+        current_ratio -> Float8,
+        debt_to_equity_ratio -> Float8,
+        operating_cash_flow_ratio -> Float8,
+        quick_ratio -> Float8,
     }
 }
 
@@ -454,14 +492,14 @@ diesel::table! {
         is_ttm -> Bool,
         from_average -> Bool,
         date -> Date,
-        free_cash_flow_equity_to_net_income -> Numeric,
-        free_cash_flow_margin -> Numeric,
-        gross_margin -> Numeric,
-        net_income_margin -> Numeric,
-        owners_earnings_to_net_income -> Numeric,
-        unlevered_free_cash_flow_to_net_income -> Numeric,
-        unlevered_free_cash_flow_to_operating_income -> Numeric,
-        unlevered_free_cash_flow_ebit_to_net_income -> Numeric,
+        free_cash_flow_equity_to_net_income -> Float8,
+        free_cash_flow_margin -> Float8,
+        gross_margin -> Float8,
+        net_income_margin -> Float8,
+        owners_earnings_to_net_income -> Float8,
+        unlevered_free_cash_flow_to_net_income -> Float8,
+        unlevered_free_cash_flow_to_operating_income -> Float8,
+        unlevered_free_cash_flow_ebit_to_net_income -> Float8,
     }
 }
 
@@ -474,21 +512,21 @@ diesel::table! {
         is_ttm -> Bool,
         from_average -> Bool,
         date -> Date,
-        average_accounts_payable -> Numeric,
-        average_inventory -> Numeric,
-        dividend_yield -> Numeric,
-        earnings_yield -> Numeric,
-        effective_tax_rate -> Numeric,
-        free_cash_flow_yield -> Numeric,
-        income_quality -> Numeric,
-        invested_capital -> Numeric,
-        market_capitalization -> Numeric,
-        net_current_asset_value -> Numeric,
-        net_operating_profit_after_tax -> Numeric,
-        normalized_income -> Numeric,
-        payout_ratio -> Numeric,
-        retention_ratio -> Numeric,
-        tangible_assets -> Numeric,
+        average_accounts_payable -> Float8,
+        average_inventory -> Float8,
+        dividend_yield -> Float8,
+        earnings_yield -> Float8,
+        effective_tax_rate -> Float8,
+        free_cash_flow_yield -> Float8,
+        income_quality -> Float8,
+        invested_capital -> Float8,
+        market_capitalization -> Float8,
+        net_current_asset_value -> Float8,
+        net_operating_profit_after_tax -> Float8,
+        normalized_income -> Float8,
+        payout_ratio -> Float8,
+        retention_ratio -> Float8,
+        tangible_assets -> Float8,
     }
 }
 
@@ -501,15 +539,15 @@ diesel::table! {
         is_ttm -> Bool,
         from_average -> Bool,
         date -> Date,
-        asset_coverage_ratio -> Numeric,
-        cash_coverage -> Numeric,
-        cash_flow_coverage_ratios -> Numeric,
-        debt_ratio -> Numeric,
-        debt_service_coverage -> Numeric,
-        interest_coverage -> Numeric,
-        long_term_debt_to_capitalization -> Numeric,
-        operating_cash_flow_ratio -> Numeric,
-        total_debt_to_capitalization -> Numeric,
+        asset_coverage_ratio -> Float8,
+        cash_coverage -> Float8,
+        cash_flow_coverage_ratios -> Float8,
+        debt_ratio -> Float8,
+        debt_service_coverage -> Float8,
+        interest_coverage -> Float8,
+        long_term_debt_to_capitalization -> Float8,
+        operating_cash_flow_ratio -> Float8,
+        total_debt_to_capitalization -> Float8,
     }
 }
 
@@ -522,15 +560,15 @@ diesel::table! {
         is_ttm -> Bool,
         from_average -> Bool,
         date -> Date,
-        book_value_per_share -> Numeric,
-        capital_expenditure_per_share -> Numeric,
-        cash_per_share -> Numeric,
-        earnings_per_share -> Numeric,
-        free_cash_flow_per_share -> Numeric,
-        operating_cash_flow_per_share -> Numeric,
-        sales_per_share -> Numeric,
-        tangible_book_value_per_share -> Numeric,
-        total_assets_per_share -> Numeric,
+        book_value_per_share -> Float8,
+        capital_expenditure_per_share -> Float8,
+        cash_per_share -> Float8,
+        earnings_per_share -> Float8,
+        free_cash_flow_per_share -> Float8,
+        operating_cash_flow_per_share -> Float8,
+        sales_per_share -> Float8,
+        tangible_book_value_per_share -> Float8,
+        total_assets_per_share -> Float8,
     }
 }
 
@@ -553,15 +591,15 @@ diesel::table! {
         is_ttm -> Bool,
         from_average -> Bool,
         date -> Date,
-        price_to_book_value -> Numeric,
-        price_to_cash_flow -> Numeric,
-        price_to_earnings -> Numeric,
-        price_to_earnings_growth -> Numeric,
-        price_to_free_cash_flow -> Numeric,
-        price_to_operating_cash_flow -> Nullable<Numeric>,
-        price_to_sales -> Numeric,
-        price_to_tangible_assets -> Numeric,
-        price_to_total_assets -> Numeric,
+        price_to_book_value -> Float8,
+        price_to_cash_flow -> Float8,
+        price_to_earnings -> Float8,
+        price_to_earnings_growth -> Float8,
+        price_to_free_cash_flow -> Float8,
+        price_to_operating_cash_flow -> Float8,
+        price_to_sales -> Float8,
+        price_to_tangible_assets -> Float8,
+        price_to_total_assets -> Float8,
     }
 }
 
@@ -569,9 +607,26 @@ diesel::table! {
     profiles (id) {
         id -> Int8,
         user_id -> Int8,
+        currency_id -> Nullable<Int8>,
+        country_id -> Nullable<Int8>,
         first_name -> Varchar,
         last_name -> Varchar,
         image -> Nullable<Varchar>,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    rates_return (id) {
+        id -> Int8,
+        date -> Date,
+        description -> Nullable<Text>,
+        active -> Nullable<Bool>,
+        account_id -> Int8,
+        #[max_length = 250]
+        recurrence -> Varchar,
+        amount -> Numeric,
         created_at -> Timestamp,
         updated_at -> Timestamp,
     }
@@ -586,15 +641,15 @@ diesel::table! {
         is_ttm -> Bool,
         from_average -> Bool,
         date -> Date,
-        nopat_roic -> Numeric,
-        return_on_assets -> Numeric,
-        return_on_capital -> Numeric,
-        return_on_common_equity -> Numeric,
-        return_on_equity -> Numeric,
-        return_on_invested_capital -> Numeric,
-        return_on_tangible_assets -> Numeric,
-        return_on_total_assets -> Numeric,
-        rogic -> Numeric,
+        nopat_roic -> Float8,
+        return_on_assets -> Float8,
+        return_on_capital -> Float8,
+        return_on_common_equity -> Float8,
+        return_on_equity -> Float8,
+        return_on_invested_capital -> Float8,
+        return_on_tangible_assets -> Float8,
+        return_on_total_assets -> Float8,
+        rogic -> Float8,
     }
 }
 
@@ -613,12 +668,12 @@ diesel::table! {
         id -> Int8,
         user_id -> Int8,
         details_id -> Int8,
+        account_id -> Int8,
         exchange_rate_id -> Nullable<Int8>,
-        date -> Timestamp,
+        date -> Date,
         amount -> Numeric,
-        #[sql_name = "type"]
         #[max_length = 50]
-        type_ -> Varchar,
+        category -> Varchar,
         created_at -> Timestamp,
         updated_at -> Timestamp,
     }
@@ -627,10 +682,10 @@ diesel::table! {
 diesel::table! {
     transactions_details (id) {
         id -> Int8,
-        date -> Timestamp,
         description -> Nullable<Text>,
         comment -> Nullable<Text>,
-        file_id -> Nullable<Int8>,
+        #[max_length = 250]
+        file -> Nullable<Varchar>,
         currency_id -> Int8,
         investment_details_id -> Nullable<Int8>,
         original_amount -> Numeric,
@@ -667,6 +722,7 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(accounts -> users (user_id));
 diesel::joinable!(assets_details -> companies (company_id));
 diesel::joinable!(balance_sheet_statements -> companies (company_id));
 diesel::joinable!(balance_sheet_statements -> currencies (reported_currency_id));
@@ -695,6 +751,7 @@ diesel::joinable!(enterprise_value_ratios -> companies (company_id));
 diesel::joinable!(enterprise_value_ratios -> currencies (reported_currency_id));
 diesel::joinable!(enterprise_value_ratios -> periods (period_id));
 diesel::joinable!(exchanges -> countries (country_id));
+diesel::joinable!(fees -> accounts (account_id));
 diesel::joinable!(free_cashflow_ratios -> companies (company_id));
 diesel::joinable!(free_cashflow_ratios -> currencies (reported_currency_id));
 diesel::joinable!(free_cashflow_ratios -> periods (period_id));
@@ -721,19 +778,23 @@ diesel::joinable!(per_share_values -> periods (period_id));
 diesel::joinable!(price_to_ratios -> companies (company_id));
 diesel::joinable!(price_to_ratios -> currencies (reported_currency_id));
 diesel::joinable!(price_to_ratios -> periods (period_id));
+diesel::joinable!(profiles -> countries (country_id));
+diesel::joinable!(profiles -> currencies (currency_id));
 diesel::joinable!(profiles -> users (user_id));
+diesel::joinable!(rates_return -> accounts (account_id));
 diesel::joinable!(rentability_ratios -> companies (company_id));
 diesel::joinable!(rentability_ratios -> currencies (reported_currency_id));
 diesel::joinable!(rentability_ratios -> periods (period_id));
+diesel::joinable!(transactions -> accounts (account_id));
 diesel::joinable!(transactions -> exchange_rates (exchange_rate_id));
 diesel::joinable!(transactions -> transactions_details (details_id));
 diesel::joinable!(transactions -> users (user_id));
 diesel::joinable!(transactions_details -> currencies (currency_id));
 diesel::joinable!(transactions_details -> investment_details (investment_details_id));
-diesel::joinable!(transactions_details -> transactions_files (file_id));
 diesel::joinable!(transactions_files -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
+    accounts,
     assets_details,
     balance_sheet_statements,
     cashflow_statements,
@@ -750,6 +811,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     enterprise_value_ratios,
     exchange_rates,
     exchanges,
+    fees,
     free_cashflow_ratios,
     income_statements,
     industries,
@@ -762,6 +824,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     periods,
     price_to_ratios,
     profiles,
+    rates_return,
     rentability_ratios,
     sectors,
     transactions,

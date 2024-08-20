@@ -59,17 +59,14 @@ struct Country {
         
 )]
 async fn list_countries(state: AppState) -> AppResult<Vec<Country>> {
-    let conn =  state.db_write().await?;
-    let query = conn
+        Ok(Json(state.db_write().await?
         .interact(move |conn| {
             countries::table
                 .select(Country::as_select())
                 .load::<Country>(conn).map_err(AppError::DatabaseQueryError)
                 
         })
-        .await.map_err(AppError::DatabaseConnectionInteractError)??;
-
-        Ok(Json(query))
+        .await.map_err(AppError::DatabaseConnectionInteractError)??))
 }
 
 
@@ -84,17 +81,15 @@ async fn list_countries(state: AppState) -> AppResult<Vec<Country>> {
     )
 )]
 async fn create_country(state: AppState, Json(country): Json<Country>) -> AppResult<Country> {
-    let conn = state.db_write().await?;
-    let result = conn
-        .interact(move |conn| {
-            diesel::insert_into(countries::table)
-                .values(&country)
-                .get_result(conn)
-                .map_err(AppError::DatabaseQueryError)
-        })
-        .await
-        .map_err(AppError::DatabaseConnectionInteractError)??;
-    Ok(Json(result))
+    Ok(Json( state.db_write().await?
+    .interact(move |conn| {
+        diesel::insert_into(countries::table)
+            .values(&country)
+            .get_result(conn)
+            .map_err(AppError::DatabaseQueryError)
+    })
+    .await
+    .map_err(AppError::DatabaseConnectionInteractError)??))
 }
 
 #[utoipa::path(
@@ -110,17 +105,15 @@ async fn create_country(state: AppState, Json(country): Json<Country>) -> AppRes
     )
 )]
 async fn read_country(Path(id): Path<i64>, state: AppState) -> AppResult<Country> {
-    let conn = state.db_write().await?;
-    let result = conn
-        .interact(move |conn| {
-            countries::table
-                .find(id)
-                .first(conn)
-                .map_err(AppError::DatabaseQueryError)
-        })
-        .await
-        .map_err(AppError::DatabaseConnectionInteractError)??;
-    Ok(Json(result))
+    Ok(Json(state.db_write().await?
+    .interact(move |conn| {
+        countries::table
+            .find(id)
+            .first(conn)
+            .map_err(AppError::DatabaseQueryError)
+    })
+    .await
+    .map_err(AppError::DatabaseConnectionInteractError)??))
 }
 
 #[utoipa::path(
@@ -141,17 +134,15 @@ async fn update_country(
     state: AppState,
     Json(country): Json<Country>,
 ) -> AppResult<Country> {
-    let conn = state.db_write().await?;
-    let result = conn
-        .interact(move |conn| {
-            diesel::update(countries::table.find(id))
-                .set(&country)
-                .get_result(conn)
-                .map_err(AppError::DatabaseQueryError)
-        })
-        .await
-        .map_err(AppError::DatabaseConnectionInteractError)??;
-    Ok(Json(result))
+    Ok(Json(state.db_write().await?
+    .interact(move |conn| {
+        diesel::update(countries::table.find(id))
+            .set(&country)
+            .get_result(conn)
+            .map_err(AppError::DatabaseQueryError)
+    })
+    .await
+    .map_err(AppError::DatabaseConnectionInteractError)??))
 }
 
 #[utoipa::path(
@@ -165,8 +156,7 @@ async fn update_country(
     )
 )]
 async fn delete_country(Path(id): Path<i64>, state: AppState) -> AppResult<usize> {
-    let conn = state.db_write().await?;
-    Ok(Json(conn.interact(move |conn| {
+    Ok(Json(state.db_write().await?.interact(move |conn| {
         diesel::delete(countries::table.find(id))
             .execute(conn)
             .map_err(AppError::DatabaseQueryError)

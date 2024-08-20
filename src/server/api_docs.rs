@@ -7,7 +7,7 @@ use crate::{
     industries::ApiDoc as ApiDocIndustries,
     sectors::ApiDoc as ApiDocSectors,
     server::ErrorMessage,
-    transactions::{ApiDocExpenses, ApiDocIncomes, ApiDocInvestments, ApiDocTransactions},
+    transactions::{ApiDocTransactions},
     users::ApiDoc as ApiDocUsers,
 };
 
@@ -31,9 +31,6 @@ use utoipa::{
     nest(
         (path = "/", api = ApiDocUsers, tags = ["Users"]),
         (path = "/", api = ApiDocCurrencies, tags = ["Currencies"]),
-        (path = "/", api = ApiDocExpenses, tags = ["Expenses"]),
-        (path = "/", api = ApiDocIncomes, tags = ["Incomes"]),
-        (path = "/", api = ApiDocInvestments, tags = ["Investments"]),
         (path = "/", api = ApiDocDictionary, tags = ["Dictionary"]),
         (path = "/", api = ApiDocCompanies, tags = ["Companies"]),
         (path = "/", api = ApiDocExchanges, tags = ["Exchanges"]),

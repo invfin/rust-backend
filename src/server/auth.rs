@@ -1,3 +1,5 @@
+use super::{AppError, AppState, Ulid};
+use crate::db::schema::profiles;
 use axum::{
     extract::{Request, State},
     middleware::Next,
@@ -8,15 +10,17 @@ use axum_extra::{
     TypedHeader,
 };
 use chrono::{Duration, Utc};
+use deadpool_diesel::postgres::Object;
+use diesel::{
+    associations::Identifiable,
+    query_dsl::methods::{FilterDsl, SelectDsl},
+    ExpressionMethods, Queryable, RunQueryDsl, Selectable, SelectableHelper,
+};
 use jsonwebtoken::{
     decode, encode, get_current_timestamp, DecodingKey, EncodingKey, Header, Validation,
 };
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
-
-use crate::AppState;
-
-use super::{AppError, Ulid};
 
 const SITE: &str = "elerem.com";
 
@@ -77,10 +81,35 @@ pub async fn create_token(
     encode(&Header::default(), &claims, &state.keys.encoding).map_err(AppError::JWTError)
 }
 
+#[derive(Debug, Selectable, Queryable)]
+#[diesel(table_name = profiles)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct User {
+    user_id: i64,
+    currency_id: Option<i64>,
+    country_id: Option<i64>,
+}
+
 #[derive(Clone)]
-pub struct UserRequest {
-    id: i32,
+pub struct JWTUserRequest {
+    id: i64,
     role: String,
+}
+
+impl JWTUserRequest {
+    pub async fn get_user(&self, conn: &Object) -> Result<User, AppError> {
+        let user_id = self.id;
+        Ok(conn
+            .interact(move |conn| {
+                profiles::table
+                    .filter(profiles::user_id.eq(user_id))
+                    .select(User::as_select())
+                    .first::<User>(conn)
+                    .map_err(AppError::DatabaseQueryError)
+            })
+            .await
+            .map_err(AppError::DatabaseConnectionInteractError)??)
+    }
 }
 
 pub async fn jwt_middleware(
@@ -98,8 +127,8 @@ pub async fn jwt_middleware(
 
     let token_data = decode::<JWTClaims>(bearer.token(), &state.keys.decoding, &validation)
         .map_err(AppError::JWTError)?;
-    request.extensions_mut().insert(UserRequest {
-        id: token_data.claims.sub.parse::<i32>().unwrap(),
+    request.extensions_mut().insert(JWTUserRequest {
+        id: token_data.claims.sub.parse::<i64>().unwrap(),
         role: token_data.claims.rol,
     });
     Ok(next.run(request).await)

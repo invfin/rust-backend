@@ -91,8 +91,7 @@ struct ShortDefinitionResponse {
         
 )]
 async fn list_definitions(Query(query_params): Query<ShortDefinitionQuery>, state: AppState) -> AppResult<ShortDefinitionResponse> {
-    let conn =  state.db_write().await?;
-    let (query, total_pages) = conn
+    let (data, total_pages) = state.db_write().await?
         .interact(move |conn| {
             definitions::table
                 .select(ShortDefinition::as_select())
@@ -103,7 +102,7 @@ async fn list_definitions(Query(query_params): Query<ShortDefinitionQuery>, stat
         })
         .await.map_err(AppError::DatabaseConnectionInteractError)??;
 
-        Ok(Json(ShortDefinitionResponse{data:query, total_pages}))
+        Ok(Json(ShortDefinitionResponse{data, total_pages}))
 }
 
 #[derive(Serialize, Deserialize, ToResponse, Debug, ToSchema)]
@@ -153,33 +152,30 @@ struct DefinitionContent {
         
 )]
 async fn get_definition(Path(slug): Path<String>, state: AppState) -> AppResult<DefinitionResponse> {
-    let conn =  state.db_write().await?;
-let result = conn
-.interact(move |conn| {
-
-    let definition = definitions::table
-        .filter(definitions::slug.eq(slug))
-        .select(Definition::as_select())
-        .first::<Definition>(conn)
-        .optional()
-        .map_err(AppError::DatabaseQueryError).unwrap();
-
-    match definition {
-        Some(v) => {
-            let content = DefinitionContent::belonging_to(&v)
-            .select(DefinitionContent::as_select())
-            .load::<DefinitionContent>(conn)
-            .map_err(AppError::DatabaseQueryError);
-
-        match content {
-            Ok(q)=>Ok(DefinitionResponse {definition:v, content:q}),
-            Err(e)=> Err(AppError::DoesNotExist)
-        }
-    } ,
-        None => Err(AppError::DoesNotExist)
-    }   
-})
-.await??;
-
-        Ok(Json(result))
+        Ok(Json(state.db_write().await?
+        .interact(move |conn| {
+        
+            let definition = definitions::table
+                .filter(definitions::slug.eq(slug))
+                .select(Definition::as_select())
+                .first::<Definition>(conn)
+                .optional()
+                .map_err(AppError::DatabaseQueryError).unwrap();
+        
+            match definition {
+                Some(v) => {
+                    let content = DefinitionContent::belonging_to(&v)
+                    .select(DefinitionContent::as_select())
+                    .load::<DefinitionContent>(conn)
+                    .map_err(AppError::DatabaseQueryError);
+        
+                match content {
+                    Ok(q)=>Ok(DefinitionResponse {definition:v, content:q}),
+                    Err(e)=> Err(AppError::DoesNotExist)
+                }
+            } ,
+                None => Err(AppError::DoesNotExist)
+            }   
+        })
+        .await??))
 }

@@ -11,16 +11,6 @@ CREATE TABLE users (
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE profiles (
-    id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    first_name VARCHAR NOT NULL DEFAULT '',
-    last_name VARCHAR NOT NULL DEFAULT '',
-    image VARCHAR,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
 CREATE TABLE countries (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -40,6 +30,18 @@ CREATE TABLE currencies (
     decimals int NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE profiles (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    currency_id BIGINT REFERENCES currencies(id) ON DELETE CASCADE,
+    country_id BIGINT REFERENCES countries(id) ON DELETE CASCADE,
+    first_name VARCHAR NOT NULL DEFAULT '',
+    last_name VARCHAR NOT NULL DEFAULT '',
+    image VARCHAR,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE currencies_countries_m2m (
@@ -86,10 +88,14 @@ CREATE TABLE exchange_rates (
     id BIGSERIAL PRIMARY KEY,
     base_id BIGINT NOT NULL REFERENCES currencies(id) ON DELETE CASCADE,
     target_id BIGINT NOT NULL REFERENCES currencies(id) ON DELETE CASCADE,
-    conversion_rate numeric NOT NULL,
-    date TIMESTAMP NOT NULL,
+    conversion_rate VARCHAR(255) NOT NULL,
+    precision INT NOT NULL,
+    scale INT NOT NULL,
+    date DATE NOT NULL,
+    source VARCHAR(255),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (base_id, target_id, date, source)
 );
 
 CREATE TABLE companies (

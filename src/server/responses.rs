@@ -69,6 +69,7 @@ pub struct ErrorMessage {
 // This is also a convenient place to log errors.
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
+        tracing::error!("{:?}", self);
         let (status, message) = match self {
             AppError::JsonRejection(rejection) => (rejection.status(), rejection.body_text()),
             AppError::JWTError(err) => (StatusCode::UNAUTHORIZED, err.to_string()),
@@ -81,7 +82,7 @@ impl IntoResponse for AppError {
             AppError::DatabasePoolError(err) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
-            AppError::WrongPassword(err) => {
+            AppError::WrongPassword(_err) => {
                 (StatusCode::NOT_FOUND, "Contraseña incorrecta".to_owned())
             }
             AppError::DoesNotExist => (StatusCode::NOT_FOUND, "Not found".to_owned()),

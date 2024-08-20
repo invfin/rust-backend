@@ -1,3 +1,7 @@
 /target
 .env
 venv/
+data/
+*.cache
+*.csv
+.vscode

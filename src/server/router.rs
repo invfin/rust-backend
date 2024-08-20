@@ -41,7 +41,7 @@ use crate::{
     exchanges::routes as exchanges_routes,
     industries::routes as industries_routes,
     sectors::routes as sectors_routes,
-    transactions::{expenses_routes, incomes_routes, investments_routes, transactions_routes},
+    transactions::{accounts_routes, transactions_routes},
     users::routes as users_routes,
 };
 
@@ -150,13 +150,11 @@ fn api_routes(state: AppState) -> Router<AppState> {
         .merge(currencies_routes(state.clone()))
         .merge(industries_routes(state.clone()))
         .merge(sectors_routes(state.clone()))
-        .merge(expenses_routes(state.clone()))
-        .merge(incomes_routes(state.clone()))
-        .merge(investments_routes(state.clone()))
         .merge(transactions_routes(state.clone()))
+        .merge(accounts_routes(state.clone()))
         .merge(dictionary_routes(state.clone()))
         .layer(from_fn_with_state(state.clone(), jwt_middleware))
-        .merge(users_routes(state.clone())) //TODO: implement some auth
+        .merge(users_routes(state.clone())) //TODO: implement better auth
         .with_state(state)
 }
 

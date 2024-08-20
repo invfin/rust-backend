@@ -168,8 +168,7 @@ async fn register(
     state: AppState,
     AppJson(payload): AppJson<RegisterPayload>,
 ) -> AppResult<LoginResponse> {
-    let conn = state.db_write().await?;
-    let user = conn
+    let user = state.db_write().await?
         .interact(move |conn| {
             diesel::insert_into(users::table)
                 .values(NewUser::new(payload))

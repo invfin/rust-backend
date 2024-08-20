@@ -24,16 +24,6 @@ use utoipa::{self,OpenApi,ToSchema, ToResponse};
 pub struct ApiDoc;
 
 
-pub fn routes(state: AppState) -> Router<AppState> {
-    Router::new()
-        .route("/sectors", post(create_sector).get(list_sectors))
-        .route(
-            "/sectors/:id",
-            get(read_sector).put(update_sector).delete(delete_sector),
-        ).with_state(state)
-}
-
-
 #[derive(Queryable, Insertable, AsChangeset, Serialize, Deserialize, Selectable,ToSchema, ToResponse)]
 #[diesel(table_name = sectors)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -79,8 +69,7 @@ async fn list_sectors(state: AppState) -> AppResult<Vec<Sector>> {
     )
 )]
 async fn create_sector(state: AppState, Json(sector): Json<Sector>) -> AppResult<Sector> {
-    let conn = state.db_write().await?;
-    let result = conn
+    let result = state.db_write().await?
         .interact(move |conn| {
             diesel::insert_into(sectors::table)
                 .values(&sector)
@@ -105,8 +94,7 @@ async fn create_sector(state: AppState, Json(sector): Json<Sector>) -> AppResult
     )
 )]
 async fn read_sector(Path(id): Path<i64>, state: AppState) -> AppResult<Sector> {
-    let conn = state.db_write().await?;
-    let result = conn
+    let result = state.db_write().await?
         .interact(move |conn| {
             sectors::table
                 .find(id)
@@ -136,17 +124,15 @@ async fn update_sector(
     state: AppState,
     Json(sector): Json<Sector>,
 ) -> AppResult<Sector> {
-    let conn = state.db_write().await?;
-    let result = conn
-        .interact(move |conn| {
-            diesel::update(sectors::table.find(id))
-                .set(&sector)
-                .get_result(conn)
-                .map_err(AppError::DatabaseQueryError)
-        })
-        .await
-        .map_err(AppError::DatabaseConnectionInteractError)??;
-    Ok(Json(result))
+    Ok(Json(state.db_write().await?
+    .interact(move |conn| {
+        diesel::update(sectors::table.find(id))
+            .set(&sector)
+            .get_result(conn)
+            .map_err(AppError::DatabaseQueryError)
+    })
+    .await
+    .map_err(AppError::DatabaseConnectionInteractError)??))
 }
 
 #[utoipa::path(
@@ -163,10 +149,8 @@ async fn update_sector(
 )]
 
 async fn delete_sector(Path(id): Path<i64>, state: AppState) -> AppResult<usize> {
-    let conn = state.db_write().await?;
-
     Ok(Json(
-        conn.interact(move |conn| {
+        state.db_write().await?.interact(move |conn| {
             diesel::delete(sectors::table.find(id))
                 .execute(conn)
                 .map_err(AppError::DatabaseQueryError)
@@ -174,4 +158,13 @@ async fn delete_sector(Path(id): Path<i64>, state: AppState) -> AppResult<usize>
         .await
         .map_err(AppError::DatabaseConnectionInteractError)??,
     ))
+}
+
+pub fn routes(state: AppState) -> Router<AppState> {
+    Router::new()
+        .route("/sectors", post(create_sector).get(list_sectors))
+        .route(
+            "/sectors/:id",
+            get(read_sector).put(update_sector).delete(delete_sector),
+        ).with_state(state)
 }

@@ -72,8 +72,7 @@ struct ShortCompanyResponse {
         
 )]
 async fn get_short_companies(Query(query_params): Query<ShortCompanyQuery>, state: AppState) -> AppResult<ShortCompanyResponse> {
-    let conn =  state.db_write().await?;
-    let (query, total_pages) = conn
+    let (query, total_pages) = state.db_write().await?
         .interact(move |conn| {
             companies::table
                 .select(ShortCompany::as_select())
@@ -128,8 +127,7 @@ struct Company {
         )
 )]
 async fn get_company(Path(ticker): Path<String>, state: AppState) -> AppResult<Company> {
-    let conn =  state.db_write().await?;
-        Ok(Json(conn
+        Ok(Json(state.db_write().await?
         .interact(move |conn| {
             companies::table
                 .filter(companies::ticker.eq(ticker))

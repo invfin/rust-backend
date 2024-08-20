@@ -1,9 +1,6 @@
-mod expenses;
-mod incomes;
-mod investments;
+mod accounts;
+mod files_parsers;
 mod transactions;
 
+pub use accounts::{routes as accounts_routes, ApiDoc as ApiDocAccounts};
 pub use transactions::{routes as transactions_routes, ApiDoc as ApiDocTransactions};
-pub use expenses::{routes as expenses_routes, ApiDoc as ApiDocExpenses};
-pub use incomes::{routes as incomes_routes, ApiDoc as ApiDocIncomes};
-pub use investments::{routes as investments_routes, ApiDoc as ApiDocInvestments};
