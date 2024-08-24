@@ -20,7 +20,6 @@ use crate::{
 };
 use chrono::NaiveDateTime;
 
-use utoipa;
 
 use utoipa::{IntoParams, OpenApi, ToResponse, ToSchema};
 

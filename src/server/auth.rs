@@ -12,7 +12,6 @@ use axum_extra::{
 use chrono::{Duration, Utc};
 use deadpool_diesel::postgres::Object;
 use diesel::{
-    associations::Identifiable,
     query_dsl::methods::{FilterDsl, SelectDsl},
     ExpressionMethods, Queryable, RunQueryDsl, Selectable, SelectableHelper,
 };
@@ -20,7 +19,6 @@ use jsonwebtoken::{
     decode, encode, get_current_timestamp, DecodingKey, EncodingKey, Header, Validation,
 };
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
 
 const SITE: &str = "elerem.com";
 
@@ -66,12 +64,6 @@ impl JWTClaims {
     }
 }
 
-impl Display for JWTClaims {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self)
-    }
-}
-
 pub async fn create_token(
     user_id: i64,
     user_role: String,
@@ -85,9 +77,7 @@ pub async fn create_token(
 #[diesel(table_name = profiles)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct User {
-    user_id: i64,
-    currency_id: Option<i64>,
-    country_id: Option<i64>,
+    id: i64,
 }
 
 #[derive(Clone)]
@@ -97,18 +87,20 @@ pub struct JWTUserRequest {
 }
 
 impl JWTUserRequest {
+    pub fn is_authorized(&self, role: &str) -> bool {
+        self.role.eq(role)
+    }
     pub async fn get_user(&self, conn: &Object) -> Result<User, AppError> {
         let user_id = self.id;
-        Ok(conn
-            .interact(move |conn| {
-                profiles::table
-                    .filter(profiles::user_id.eq(user_id))
-                    .select(User::as_select())
-                    .first::<User>(conn)
-                    .map_err(AppError::DatabaseQueryError)
-            })
-            .await
-            .map_err(AppError::DatabaseConnectionInteractError)??)
+        conn.interact(move |conn| {
+            profiles::table
+                .filter(profiles::user_id.eq(user_id))
+                .select(User::as_select())
+                .first::<User>(conn)
+                .map_err(AppError::DatabaseQueryError)
+        })
+        .await
+        .map_err(AppError::DatabaseConnectionInteractError)?
     }
 }
 
@@ -127,9 +119,11 @@ pub async fn jwt_middleware(
 
     let token_data = decode::<JWTClaims>(bearer.token(), &state.keys.decoding, &validation)
         .map_err(AppError::JWTError)?;
+
     request.extensions_mut().insert(JWTUserRequest {
         id: token_data.claims.sub.parse::<i64>().unwrap(),
         role: token_data.claims.rol,
     });
+
     Ok(next.run(request).await)
 }

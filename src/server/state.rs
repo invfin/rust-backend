@@ -5,18 +5,13 @@ use deadpool_diesel::{
     Runtime,
 };
 use menva::get_env;
-use minijinja::Environment;
 use std::{ops::Deref, sync::Arc};
 
 pub struct App {
     /// Database connection pool connected to the primary database
     pub primary_database: DeadpoolPool,
 
-    /// Database connection pool connected to the read-only replica database
-    pub replica_database: Option<DeadpoolPool>,
-
     pub keys: Keys,
-    pub templates: Environment<'static>,
 }
 
 fn maybe_append_url_param(url: &mut url::Url, key: &str, value: &str) {
@@ -68,41 +63,9 @@ impl App {
                 .unwrap()
         };
 
-        let replica_database = if let Some(pool_config) = config.db.replica.as_ref() {
-            let replica_db_connection_config = crate::db::ConnectionConfig {
-                statement_timeout: config.db.statement_timeout,
-                read_only: pool_config.read_only_mode,
-            };
-
-            let url = connection_url(&config.db, &pool_config.url);
-            let manager = DeadpoolManager::new(url, Runtime::Tokio1);
-
-            let pool = DeadpoolPool::builder(manager)
-                .runtime(Runtime::Tokio1)
-                .max_size(pool_config.pool_size)
-                .wait_timeout(Some(config.db.connection_timeout))
-                .post_create(replica_db_connection_config)
-                .build()
-                .unwrap();
-
-            Some(pool)
-        } else {
-            None
-        };
-
-        let mut templates = Environment::new();
-        templates
-            .add_template("home", include_str!("../../templates/index.jinja"))
-            .unwrap();
-        templates
-            .add_template("layout", include_str!("../../templates/layout.jinja"))
-            .unwrap();
-
         Self {
             keys: Keys::new(get_env("SESSION_KEY").as_bytes()),
             primary_database,
-            replica_database,
-            templates,
         }
     }
 

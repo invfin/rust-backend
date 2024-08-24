@@ -123,7 +123,7 @@ impl TransactionsFilesRequest {
             match name {
                 "account_id" => {
                     let data = match field.bytes().await {
-                        Ok(v) => String::from_utf8((&v).to_vec())
+                        Ok(v) => String::from_utf8(v.to_vec())
                             .unwrap()
                             .parse::<i64>()
                             .ok(),

@@ -21,8 +21,6 @@ pub struct DatabasePools {
     /// Settings for the primary database. This is usually writeable, but will be read-only in
     /// some configurations.
     pub primary: DbPoolConfig,
-    /// An optional follower database. Always read-only.
-    pub replica: Option<DbPoolConfig>,
     /// Number of seconds to wait for unacknowledged TCP packets before treating the connection as
     /// broken. This value will determine how long crates.io stays unavailable in case of full
     /// packet loss between the application and the database: setting it too high will result in an
@@ -35,9 +33,6 @@ pub struct DatabasePools {
     /// Time to wait for a query response before canceling the query and
     /// returning an error.
     pub statement_timeout: Duration,
-    /// Number of threads to use for asynchronous operations such as connection
-    /// creation.
-    pub helper_threads: usize,
     /// Whether to enforce that all the database connections are encrypted with TLS.
     pub enforce_tls: bool,
 }
@@ -47,7 +42,6 @@ pub struct DbPoolConfig {
     pub url: String,
     pub read_only_mode: bool,
     pub pool_size: usize,
-    pub min_idle: Option<u32>,
 }
 
 impl DatabasePools {
@@ -57,8 +51,6 @@ impl DatabasePools {
 }
 
 impl DatabasePools {
-    const DEFAULT_POOL_SIZE: usize = 3;
-
     /// Load settings for one or more database pools from the environment
     ///
     /// # Panics
@@ -77,12 +69,6 @@ impl DatabasePools {
         let primary_async_pool_size = get_env("DB_PRIMARY_ASYNC_POOL_SIZE")
             .parse::<usize>()
             .unwrap();
-        let replica_async_pool_size: usize = get_env("DB_REPLICA_ASYNC_POOL_SIZE")
-            .parse::<usize>()
-            .unwrap();
-
-        let primary_min_idle = None;
-        let replica_min_idle = None;
 
         let tcp_timeout_ms = get_env("DB_TCP_TIMEOUT_MS").parse::<u64>().unwrap();
 
@@ -92,8 +78,6 @@ impl DatabasePools {
         // `DB_TIMEOUT` currently configures both the connection timeout and
         // the statement timeout, so we can copy the parsed connection timeout.
         let statement_timeout = connection_timeout;
-
-        let helper_threads = get_env("DB_HELPER_THREADS").parse::<usize>().unwrap();
 
         match get_env("DB_OFFLINE").as_str() {
             // The actual leader is down, use the follower in read-only mode as the primary and
@@ -109,13 +93,12 @@ impl DatabasePools {
                         .unwrap(),
                     read_only_mode: true,
                     pool_size: primary_async_pool_size,
-                    min_idle: primary_min_idle,
                 },
-                replica: None,
+
                 tcp_timeout_ms,
                 connection_timeout,
                 statement_timeout,
-                helper_threads,
+
                 enforce_tls,
             },
             // The follower is down, don't configure the replica.
@@ -124,13 +107,12 @@ impl DatabasePools {
                     url: leader_url,
                     read_only_mode,
                     pool_size: primary_async_pool_size,
-                    min_idle: primary_min_idle,
                 },
-                replica: None,
+
                 tcp_timeout_ms,
                 connection_timeout,
                 statement_timeout,
-                helper_threads,
+
                 enforce_tls,
             },
             _ => Self {
@@ -138,21 +120,12 @@ impl DatabasePools {
                     url: leader_url,
                     read_only_mode,
                     pool_size: primary_async_pool_size,
-                    min_idle: primary_min_idle,
                 },
-                replica: follower_url.map(|url| DbPoolConfig {
-                    url,
-                    // Always enable read-only mode for the follower. In staging, we attach the
-                    // same leader database to both environment variables and this ensures the
-                    // connection is opened read-only even when attached to a writeable database.
-                    read_only_mode: true,
-                    pool_size: replica_async_pool_size,
-                    min_idle: replica_min_idle,
-                }),
+
                 tcp_timeout_ms,
                 connection_timeout,
                 statement_timeout,
-                helper_threads,
+
                 enforce_tls,
             },
         }

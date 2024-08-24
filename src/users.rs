@@ -16,7 +16,6 @@ use argon2::{
     Argon2,
 };
 
-use utoipa;
 use utoipa::OpenApi;
 use utoipa::{ToResponse, ToSchema};
 

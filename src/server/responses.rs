@@ -55,6 +55,7 @@ pub enum AppError {
     DatabaseConnectionInteractError(deadpool_diesel::InteractError),
     DatabasePoolError(deadpool_diesel::PoolError),
     DoesNotExist,
+    RoleError,
 }
 
 // How we want errors responses to be serialized
@@ -73,6 +74,7 @@ impl IntoResponse for AppError {
         let (status, message) = match self {
             AppError::JsonRejection(rejection) => (rejection.status(), rejection.body_text()),
             AppError::JWTError(err) => (StatusCode::UNAUTHORIZED, err.to_string()),
+            AppError::RoleError => (StatusCode::UNAUTHORIZED, "Not authorized".to_string()),
             AppError::DatabaseQueryError(err) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }

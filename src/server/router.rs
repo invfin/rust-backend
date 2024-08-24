@@ -95,7 +95,7 @@ pub fn get_router(state: AppState) -> Router<()> {
             CONTENT_TYPE,
             HeaderValue::from_static("application/octet-stream"),
         )
-        .layer(post_cors());
+        .layer(std_cors());
 
     Router::new()
         .route("/", get(home))
@@ -114,7 +114,7 @@ struct MyMakeRequestId {
 use std::sync::atomic::Ordering;
 
 impl MakeRequestId for MyMakeRequestId {
-    fn make_request_id<B>(&mut self, request: &Request<B>) -> Option<RequestId> {
+    fn make_request_id<B>(&mut self, _request: &Request<B>) -> Option<RequestId> {
         let request_id = self
             .counter
             .fetch_add(1, Ordering::SeqCst)
@@ -126,14 +126,7 @@ impl MakeRequestId for MyMakeRequestId {
     }
 }
 
-fn get_cors() -> CorsLayer {
-    CorsLayer::new()
-        .allow_methods([Method::GET])
-        .allow_headers([CONTENT_TYPE, AUTHORIZATION])
-        .allow_origin(Any)
-}
-
-fn post_cors() -> CorsLayer {
+fn std_cors() -> CorsLayer {
     CorsLayer::new()
         // allow `GET` and `POST` when accessing the resource
         .allow_methods([Method::GET, Method::POST])

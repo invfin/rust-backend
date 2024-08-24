@@ -21,6 +21,7 @@ pub struct ApiDoc;
 pub fn routes(state: AppState) -> Router<AppState> {
     Router::new()
         .route("/accounts", post(create_account))
+        .route("/rates", post(create_rate))
         .with_state(state)
 }
 
@@ -155,7 +156,7 @@ async fn create_account(state: AppState, Json(req): Json<AccountRequest>) -> App
 
 #[utoipa::path(
     post,
-    path = "accounts/{id}/rates",
+    path = "rates",
     request_body = Fee,
     responses(
         (status = 200, body = Fee, description = "Add a new rate or fee to an account"),
