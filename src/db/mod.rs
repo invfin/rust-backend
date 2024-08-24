@@ -1,6 +1,6 @@
 mod database_pools;
-pub mod schema;
 mod pagination;
+pub mod schema;
 
-pub use pagination::{Paginate,Paginated};
 pub use database_pools::{ConnectionConfig, DatabasePools, DbPoolConfig};
+pub use pagination::{Paginate, Paginated};

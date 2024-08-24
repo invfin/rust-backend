@@ -12,29 +12,32 @@ use axum::{
 use diesel::prelude::*;
 
 use serde::{Deserialize, Serialize};
-use utoipa::{self,OpenApi,ToSchema, ToResponse};
+use utoipa::{self, OpenApi, ToResponse, ToSchema};
 
 #[derive(OpenApi)]
 #[openapi(
     paths(create_industry, delete_industry, read_industry, update_industry, list_industries),
-    components(schemas(Industry), 
+    components(schemas(Industry),
     responses(Industry)),
     security(("token_jwt" = []))
 )]
 pub struct ApiDoc;
-
 
 pub fn routes(state: AppState) -> Router<AppState> {
     Router::new()
         .route("/industries", post(create_industry).get(list_industries))
         .route(
             "/industries/:id",
-            get(read_industry).put(update_industry).delete(delete_industry),
-        ).with_state(state)
+            get(read_industry)
+                .put(update_industry)
+                .delete(delete_industry),
+        )
+        .with_state(state)
 }
 
-
-#[derive(Queryable, Insertable, AsChangeset, Serialize, Deserialize, Selectable,ToSchema, ToResponse)]
+#[derive(
+    Queryable, Insertable, AsChangeset, Serialize, Deserialize, Selectable, ToSchema, ToResponse,
+)]
 #[diesel(table_name = industries)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 struct Industry {
@@ -45,27 +48,27 @@ struct Industry {
 }
 
 #[utoipa::path(
-    get, 
+    get,
     path = "industries",
     responses(
             (status = 200, body = Vec<Industry>, description = "A paginated result of industries with key information"),
             (status = "4XX", body = ErrorMessage, description = "Opusi daisy"),
             (status = "5XX", body = ErrorMessage, description = "Opusi daisy"),
         )
-        
 )]
 async fn list_industries(state: AppState) -> AppResult<Vec<Industry>> {
-    let conn =  state.db_write().await?;
+    let conn = state.db_write().await?;
     let query = conn
         .interact(move |conn| {
             industries::table
                 .select(Industry::as_select())
-                .load::<Industry>(conn).map_err(AppError::DatabaseQueryError)
-                
+                .load::<Industry>(conn)
+                .map_err(AppError::DatabaseQueryError)
         })
-        .await.map_err(AppError::DatabaseConnectionInteractError)??;
+        .await
+        .map_err(AppError::DatabaseConnectionInteractError)??;
 
-        Ok(Json(query))
+    Ok(Json(query))
 }
 
 #[utoipa::path(
@@ -78,10 +81,7 @@ async fn list_industries(state: AppState) -> AppResult<Vec<Industry>> {
         (status = "5XX", body = ErrorMessage, description = "Server error"),
     )
 )]
-async fn create_industry(
-    state: AppState,Json(industry): Json<Industry>,
-    
-) -> AppResult<Industry> {
+async fn create_industry(state: AppState, Json(industry): Json<Industry>) -> AppResult<Industry> {
     let conn = state.db_write().await?;
     let result = conn
         .interact(move |conn| {
@@ -98,9 +98,7 @@ async fn create_industry(
 #[utoipa::path(
     get,
     path = "industries/{id}",
-    params(
-        ("id" = i64, Path, description = "Industry ID")
-    ),
+    params(("id" = i64, Path, description = "Industry ID")),
     responses(
         (status = 200, body = Industry, description = "Read an industry by ID"),
         (status = "4XX", body = ErrorMessage, description = "Client error"),
@@ -124,9 +122,7 @@ async fn read_industry(Path(id): Path<i64>, state: AppState) -> AppResult<Indust
 #[utoipa::path(
     put,
     path = "industries/{id}",
-    params(
-        ("id" = i64, Path, description = "Industry ID")
-    ),
+    params(("id" = i64, Path, description = "Industry ID")),
     request_body = Industry,
     responses(
         (status = 200, body = Industry, description = "Update an industry by ID"),
@@ -136,8 +132,8 @@ async fn read_industry(Path(id): Path<i64>, state: AppState) -> AppResult<Indust
 )]
 async fn update_industry(
     Path(id): Path<i64>,
-    state: AppState,Json(industry): Json<Industry>,
-    
+    state: AppState,
+    Json(industry): Json<Industry>,
 ) -> AppResult<Industry> {
     let conn = state.db_write().await?;
     let result = conn
@@ -155,9 +151,7 @@ async fn update_industry(
 #[utoipa::path(
     delete,
     path = "industries/{id}",
-    params(
-        ("id" = i64, Path, description = "Industry ID")
-    ),
+    params(("id" = i64, Path, description = "Industry ID")),
     responses(
         (status = 200, description = "Delete an industry by ID"),
         (status = "4XX", body = ErrorMessage, description = "Client error"),

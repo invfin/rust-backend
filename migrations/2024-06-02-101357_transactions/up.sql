@@ -42,24 +42,23 @@ CREATE TABLE transactions_details (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-
 CREATE TABLE accounts (
     id BIGSERIAL NOT NULL PRIMARY KEY,
-    date DATE NOT NULL,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    currency_id BIGINT NOT NULL REFERENCES currencies(id) ON DELETE CASCADE,
     name VARCHAR(250) NOT NULL,
-    subcategory VARCHAR(250) NOT NULL,
     category VARCHAR(250) NOT NULL,
     company VARCHAR(250) NOT NULL,
     description TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
 CREATE TABLE fees (
     id BIGSERIAL NOT NULL PRIMARY KEY,
-    date DATE NOT NULL,
     description TEXT,
-    active bool,
+    active bool NOT NULL DEFAULT true,
+    percentage bool NOT NULL,
     account_id BIGINT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     recurrence VARCHAR(250) NOT NULL,
     amount numeric(7,4) NOT NULL,
@@ -69,9 +68,9 @@ CREATE TABLE fees (
 
 CREATE TABLE rates_return (
     id BIGSERIAL NOT NULL PRIMARY KEY,
-    date DATE NOT NULL,
     description TEXT,
-    active bool,
+    active bool NOT NULL DEFAULT true,
+    percentage bool NOT NULL,
     account_id BIGINT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     recurrence VARCHAR(250) NOT NULL,
     amount numeric(7,4) NOT NULL,

@@ -8,7 +8,6 @@ use menva::get_env;
 use minijinja::Environment;
 use std::{ops::Deref, sync::Arc};
 
-
 pub struct App {
     /// Database connection pool connected to the primary database
     pub primary_database: DeadpoolPool,
@@ -110,7 +109,10 @@ impl App {
     /// Obtain a read/write database connection from the async primary pool
     #[instrument(skip_all)]
     pub async fn db_write(&self) -> Result<deadpool_diesel::postgres::Connection, AppError> {
-        self.primary_database.get().await.map_err(AppError::DatabasePoolError)
+        self.primary_database
+            .get()
+            .await
+            .map_err(AppError::DatabasePoolError)
     }
 }
 

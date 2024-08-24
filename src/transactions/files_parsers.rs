@@ -4,10 +4,9 @@ use bigdecimal::BigDecimal;
 use chrono::NaiveDate;
 use futures_util::{stream::FuturesUnordered, StreamExt};
 use polars::{
-    datatypes::AnyValue,
     io::SerReader,
     lazy::dsl::{col, lit, StrptimeOptions},
-    prelude::{IntoLazy, LazyCsvReader, LazyFileListReader},
+    prelude::{LazyCsvReader, LazyFileListReader},
 };
 
 #[derive(Debug)]

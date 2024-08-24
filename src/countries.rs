@@ -12,17 +12,16 @@ use axum::{
 use diesel::prelude::*;
 
 use serde::{Deserialize, Serialize};
-use utoipa::{self,OpenApi,ToSchema, ToResponse};
+use utoipa::{self, OpenApi, ToResponse, ToSchema};
 
 #[derive(OpenApi)]
 #[openapi(
     paths(create_country, delete_country, read_country, update_country, list_countries),
-    components(schemas(Country), 
+    components(schemas(Country),
     responses(Country)),
     security(("token_jwt" = []))
 )]
 pub struct ApiDoc;
-
 
 pub fn routes(state: AppState) -> Router<AppState> {
     Router::new()
@@ -31,10 +30,13 @@ pub fn routes(state: AppState) -> Router<AppState> {
         .route(
             "/countries/:id",
             get(read_country).put(update_country).delete(delete_country),
-        ).with_state(state)
+        )
+        .with_state(state)
 }
 
-#[derive(Queryable, Insertable, AsChangeset, Serialize,Selectable, Deserialize, ToResponse, ToSchema)]
+#[derive(
+    Queryable, Insertable, AsChangeset, Serialize, Selectable, Deserialize, ToResponse, ToSchema,
+)]
 #[diesel(table_name = countries)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 struct Country {
@@ -47,28 +49,30 @@ struct Country {
     updated_at: chrono::NaiveDateTime,
 }
 
-
 #[utoipa::path(
-    get, 
+    get,
     path = "countries",
     responses(
             (status = 200, body = Vec<Country>, description = "A paginated result of countries with key information"),
             (status = "4XX", body = ErrorMessage, description = "Opusi daisy"),
             (status = "5XX", body = ErrorMessage, description = "Opusi daisy"),
         )
-        
 )]
 async fn list_countries(state: AppState) -> AppResult<Vec<Country>> {
-        Ok(Json(state.db_write().await?
-        .interact(move |conn| {
-            countries::table
-                .select(Country::as_select())
-                .load::<Country>(conn).map_err(AppError::DatabaseQueryError)
-                
-        })
-        .await.map_err(AppError::DatabaseConnectionInteractError)??))
+    Ok(Json(
+        state
+            .db_write()
+            .await?
+            .interact(move |conn| {
+                countries::table
+                    .select(Country::as_select())
+                    .load::<Country>(conn)
+                    .map_err(AppError::DatabaseQueryError)
+            })
+            .await
+            .map_err(AppError::DatabaseConnectionInteractError)??,
+    ))
 }
-
 
 #[utoipa::path(
     post,
@@ -81,15 +85,19 @@ async fn list_countries(state: AppState) -> AppResult<Vec<Country>> {
     )
 )]
 async fn create_country(state: AppState, Json(country): Json<Country>) -> AppResult<Country> {
-    Ok(Json( state.db_write().await?
-    .interact(move |conn| {
-        diesel::insert_into(countries::table)
-            .values(&country)
-            .get_result(conn)
-            .map_err(AppError::DatabaseQueryError)
-    })
-    .await
-    .map_err(AppError::DatabaseConnectionInteractError)??))
+    Ok(Json(
+        state
+            .db_write()
+            .await?
+            .interact(move |conn| {
+                diesel::insert_into(countries::table)
+                    .values(&country)
+                    .get_result(conn)
+                    .map_err(AppError::DatabaseQueryError)
+            })
+            .await
+            .map_err(AppError::DatabaseConnectionInteractError)??,
+    ))
 }
 
 #[utoipa::path(
@@ -105,15 +113,19 @@ async fn create_country(state: AppState, Json(country): Json<Country>) -> AppRes
     )
 )]
 async fn read_country(Path(id): Path<i64>, state: AppState) -> AppResult<Country> {
-    Ok(Json(state.db_write().await?
-    .interact(move |conn| {
-        countries::table
-            .find(id)
-            .first(conn)
-            .map_err(AppError::DatabaseQueryError)
-    })
-    .await
-    .map_err(AppError::DatabaseConnectionInteractError)??))
+    Ok(Json(
+        state
+            .db_write()
+            .await?
+            .interact(move |conn| {
+                countries::table
+                    .find(id)
+                    .first(conn)
+                    .map_err(AppError::DatabaseQueryError)
+            })
+            .await
+            .map_err(AppError::DatabaseConnectionInteractError)??,
+    ))
 }
 
 #[utoipa::path(
@@ -134,15 +146,19 @@ async fn update_country(
     state: AppState,
     Json(country): Json<Country>,
 ) -> AppResult<Country> {
-    Ok(Json(state.db_write().await?
-    .interact(move |conn| {
-        diesel::update(countries::table.find(id))
-            .set(&country)
-            .get_result(conn)
-            .map_err(AppError::DatabaseQueryError)
-    })
-    .await
-    .map_err(AppError::DatabaseConnectionInteractError)??))
+    Ok(Json(
+        state
+            .db_write()
+            .await?
+            .interact(move |conn| {
+                diesel::update(countries::table.find(id))
+                    .set(&country)
+                    .get_result(conn)
+                    .map_err(AppError::DatabaseQueryError)
+            })
+            .await
+            .map_err(AppError::DatabaseConnectionInteractError)??,
+    ))
 }
 
 #[utoipa::path(
@@ -156,12 +172,16 @@ async fn update_country(
     )
 )]
 async fn delete_country(Path(id): Path<i64>, state: AppState) -> AppResult<usize> {
-    Ok(Json(state.db_write().await?.interact(move |conn| {
-        diesel::delete(countries::table.find(id))
-            .execute(conn)
-            .map_err(AppError::DatabaseQueryError)
-    })
-    .await
-    .map_err(AppError::DatabaseConnectionInteractError)??))
+    Ok(Json(
+        state
+            .db_write()
+            .await?
+            .interact(move |conn| {
+                diesel::delete(countries::table.find(id))
+                    .execute(conn)
+                    .map_err(AppError::DatabaseQueryError)
+            })
+            .await
+            .map_err(AppError::DatabaseConnectionInteractError)??,
+    ))
 }
-

@@ -3,12 +3,10 @@
 diesel::table! {
     accounts (id) {
         id -> Int8,
-        date -> Date,
         user_id -> Int8,
+        currency_id -> Int8,
         #[max_length = 250]
         name -> Varchar,
-        #[max_length = 250]
-        subcategory -> Varchar,
         #[max_length = 250]
         category -> Varchar,
         #[max_length = 250]
@@ -241,6 +239,19 @@ diesel::table! {
 }
 
 diesel::table! {
+    dashboard (id) {
+        id -> Int8,
+        #[max_length = 255]
+        title -> Varchar,
+        #[max_length = 255]
+        slug -> Varchar,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+        author_id -> Int8,
+    }
+}
+
+diesel::table! {
     definitions (id) {
         id -> Int8,
         #[max_length = 255]
@@ -375,9 +386,9 @@ diesel::table! {
 diesel::table! {
     fees (id) {
         id -> Int8,
-        date -> Date,
         description -> Nullable<Text>,
-        active -> Nullable<Bool>,
+        active -> Bool,
+        percentage -> Bool,
         account_id -> Int8,
         #[max_length = 250]
         recurrence -> Varchar,
@@ -620,9 +631,9 @@ diesel::table! {
 diesel::table! {
     rates_return (id) {
         id -> Int8,
-        date -> Date,
         description -> Nullable<Text>,
-        active -> Nullable<Bool>,
+        active -> Bool,
+        percentage -> Bool,
         account_id -> Int8,
         #[max_length = 250]
         recurrence -> Varchar,
@@ -722,6 +733,25 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    widget (id) {
+        id -> Int8,
+        #[max_length = 255]
+        title -> Varchar,
+        #[max_length = 255]
+        slug -> Varchar,
+        #[max_length = 255]
+        component -> Varchar,
+        #[max_length = 255]
+        source -> Varchar,
+        author_id -> Int8,
+        dashboard_id -> Nullable<Int8>,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
+diesel::joinable!(accounts -> currencies (currency_id));
 diesel::joinable!(accounts -> users (user_id));
 diesel::joinable!(assets_details -> companies (company_id));
 diesel::joinable!(balance_sheet_statements -> companies (company_id));
@@ -739,6 +769,7 @@ diesel::joinable!(company_growth -> currencies (reported_currency_id));
 diesel::joinable!(company_growth -> periods (period_id));
 diesel::joinable!(currencies_countries_m2m -> countries (country_id));
 diesel::joinable!(currencies_countries_m2m -> currencies (currency_id));
+diesel::joinable!(dashboard -> users (author_id));
 diesel::joinable!(definitions -> users (author_id));
 diesel::joinable!(definitions_categories_m2m -> definitions (definition_id));
 diesel::joinable!(definitions_categories_m2m -> definitions_categories (category_id));
@@ -803,6 +834,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     countries,
     currencies,
     currencies_countries_m2m,
+    dashboard,
     definitions,
     definitions_categories,
     definitions_categories_m2m,
@@ -831,4 +863,5 @@ diesel::allow_tables_to_appear_in_same_query!(
     transactions_details,
     transactions_files,
     users,
+    widget,
 );

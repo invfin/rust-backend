@@ -12,12 +12,12 @@ use axum::{
 use diesel::prelude::*;
 
 use serde::{Deserialize, Serialize};
-use utoipa::{self,OpenApi,ToSchema, ToResponse};
+use utoipa::{self, OpenApi, ToResponse, ToSchema};
 
 #[derive(OpenApi)]
 #[openapi(
     paths(create_exchange, delete_exchange, read_exchange, update_exchange, list_exchanges),
-    components(schemas(Exchange), 
+    components(schemas(Exchange),
     responses(Exchange)),
     security(("token_jwt" = []))
 )]
@@ -25,20 +25,19 @@ pub struct ApiDoc;
 
 pub fn routes(state: AppState) -> Router<AppState> {
     Router::new()
-        .route(
-            "/exchanges",
-            post(create_exchange).get(list_exchanges),
-        )
+        .route("/exchanges", post(create_exchange).get(list_exchanges))
         .route(
             "/exchanges/:id",
             get(read_exchange)
                 .put(update_exchange)
                 .delete(delete_exchange),
-        ).with_state(state)
+        )
+        .with_state(state)
 }
 
-
-#[derive(Queryable, Insertable, AsChangeset, Serialize, Deserialize, Selectable,ToSchema, ToResponse)]
+#[derive(
+    Queryable, Insertable, AsChangeset, Serialize, Deserialize, Selectable, ToSchema, ToResponse,
+)]
 #[diesel(table_name = exchanges)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 struct Exchange {
@@ -52,27 +51,27 @@ struct Exchange {
 }
 
 #[utoipa::path(
-    get, 
+    get,
     path = "exchanges",
     responses(
             (status = 200, body = Vec<Exchange>, description = "A paginated result of exchanges with key information"),
             (status = "4XX", body = ErrorMessage, description = "Opusi daisy"),
             (status = "5XX", body = ErrorMessage, description = "Opusi daisy"),
         )
-        
 )]
 async fn list_exchanges(state: AppState) -> AppResult<Vec<Exchange>> {
-    let conn =  state.db_write().await?;
+    let conn = state.db_write().await?;
     let query = conn
         .interact(move |conn| {
             exchanges::table
                 .select(Exchange::as_select())
-                .load::<Exchange>(conn).map_err(AppError::DatabaseQueryError)
-                
+                .load::<Exchange>(conn)
+                .map_err(AppError::DatabaseQueryError)
         })
-        .await.map_err(AppError::DatabaseConnectionInteractError)??;
+        .await
+        .map_err(AppError::DatabaseConnectionInteractError)??;
 
-        Ok(Json(query))
+    Ok(Json(query))
 }
 
 #[utoipa::path(
@@ -85,10 +84,7 @@ async fn list_exchanges(state: AppState) -> AppResult<Vec<Exchange>> {
         (status = "5XX", body = ErrorMessage, description = "Server error"),
     )
 )]
-async fn create_exchange(
-    state: AppState,
-    Json(exchange): Json<Exchange>,
-) -> AppResult<Exchange> {
+async fn create_exchange(state: AppState, Json(exchange): Json<Exchange>) -> AppResult<Exchange> {
     let conn = state.db_write().await?;
     let result = conn
         .interact(move |conn| {
@@ -105,9 +101,7 @@ async fn create_exchange(
 #[utoipa::path(
     get,
     path = "exchanges/{id}",
-    params(
-        ("id" = i64, Path, description = "Exchange ID")
-    ),
+    params(("id" = i64, Path, description = "Exchange ID")),
     responses(
         (status = 200, body = Exchange, description = "Read an exchange by ID"),
         (status = "4XX", body = ErrorMessage, description = "Client error"),
@@ -131,9 +125,7 @@ async fn read_exchange(Path(id): Path<i64>, state: AppState) -> AppResult<Exchan
 #[utoipa::path(
     put,
     path = "exchanges/{id}",
-    params(
-        ("id" = i64, Path, description = "Exchange ID")
-    ),
+    params(("id" = i64, Path, description = "Exchange ID")),
     request_body = Exchange,
     responses(
         (status = 200, body = Exchange, description = "Update an exchange by ID"),
@@ -162,9 +154,7 @@ async fn update_exchange(
 #[utoipa::path(
     delete,
     path = "exchanges/{id}",
-    params(
-        ("id" = i64, Path, description = "Exchange ID")
-    ),
+    params(("id" = i64, Path, description = "Exchange ID")),
     responses(
         (status = 200, body = usize, description = "Delete an exchange by ID"),
         (status = "4XX", body = ErrorMessage, description = "Client error"),

@@ -4,11 +4,7 @@ use axum::{
     routing::post,
     Json, Router,
 };
-use diesel::{
-    associations::{Associations, Identifiable},
-    query_dsl::methods::{FilterDsl, SelectDsl},
-    Insertable,
-};
+use diesel::Insertable;
 use futures_util::{stream::FuturesUnordered, StreamExt};
 use tokio::io::AsyncWriteExt;
 use utoipa::{self, OpenApi};
@@ -125,21 +121,13 @@ impl TransactionsFilesRequest {
             let name = field.name().unwrap();
             let file_name = field.file_name().unwrap().to_owned();
             match name {
-                "source" => {
-                    let data = field.bytes().await.unwrap();
-                    request.source = Source::from_bytes(&data);
-                }
-                "account" => {
-                    let data = field.bytes().await.unwrap();
-                    request.account = String::from_utf8((&data).to_vec()).unwrap();
-                }
                 "account_id" => {
                     let data = match field.bytes().await {
                         Ok(v) => String::from_utf8((&v).to_vec())
                             .unwrap()
                             .parse::<i64>()
                             .ok(),
-                        Err(e) => None,
+                        Err(_e) => None,
                     };
 
                     request.account_id = data;
@@ -155,7 +143,7 @@ impl TransactionsFilesRequest {
 
     async fn process_files(&self, file: &TransactionFile) {
         //TODO: for now we assume that we have always the exchange rates for USD/EUR
-        let transactions = self.source.parse_file(self.user_id, file).await;
+        let _transactions = self.source.parse_file(self.user_id, file).await;
     }
 
     async fn save(self) -> AppResult<usize> {
@@ -181,13 +169,11 @@ impl TransactionsFilesRequest {
     )
 )]
 async fn upload_transactions_file(state: AppState, mut multipart: Multipart) -> AppResult<usize> {
+    let conn = state.db_write().await?;
     let request = TransactionsFilesRequest::new(&mut multipart).await;
 
     let new_files = request.files.iter().map(|f| {});
-    state
-        .db_write()
-        .await?
-        .interact(move |conn| {})
+    conn.interact(move |conn| {})
         .await
         .map_err(AppError::DatabaseConnectionInteractError)?;
     request.save().await

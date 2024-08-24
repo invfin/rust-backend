@@ -1,7 +1,4 @@
-use axum::{
-    routing::post,
-    Json, Router,
-};
+use axum::{routing::post, Json, Router};
 use diesel::{
     query_dsl::methods::{FilterDsl, SelectDsl},
     ExpressionMethods, Insertable, OptionalExtension, Queryable, RunQueryDsl, Selectable,
@@ -19,9 +16,9 @@ use argon2::{
     Argon2,
 };
 
-use utoipa::OpenApi;
-use utoipa::{ToSchema, ToResponse};
 use utoipa;
+use utoipa::OpenApi;
+use utoipa::{ToResponse, ToSchema};
 
 #[derive(OpenApi)]
 #[openapi(
@@ -118,7 +115,7 @@ impl LoginResponse {
 }
 
 #[utoipa::path(
-    post, 
+    post,
     path = "login",
     request_body = LoginPayload,
     description = "User logedin",
@@ -152,9 +149,8 @@ async fn login(
     LoginResponse::new(&user, &state).await
 }
 
-
 #[utoipa::path(
-    post, 
+    post,
     path = "register",
     description = "Register user",
     request_body = RegisterPayload,
@@ -168,7 +164,9 @@ async fn register(
     state: AppState,
     AppJson(payload): AppJson<RegisterPayload>,
 ) -> AppResult<LoginResponse> {
-    let user = state.db_write().await?
+    let user = state
+        .db_write()
+        .await?
         .interact(move |conn| {
             diesel::insert_into(users::table)
                 .values(NewUser::new(payload))

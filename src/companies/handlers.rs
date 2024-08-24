@@ -1,34 +1,36 @@
+use axum::{
+    extract::{Path, Query},
+    routing::get,
+    Json, Router,
+};
 use diesel::{
-    query_dsl::methods::{FilterDsl, SelectDsl}, ExpressionMethods,  OptionalExtension, Queryable, RunQueryDsl, Selectable, SelectableHelper
-    };
+    query_dsl::methods::{FilterDsl, SelectDsl},
+    ExpressionMethods, OptionalExtension, Queryable, RunQueryDsl, Selectable, SelectableHelper,
+};
 use serde::{Deserialize, Serialize};
-use axum::{ extract::{Path, Query}, routing::get, Json, Router};
 
+use crate::{
+    db::{schema::companies, Paginate},
+    server::{AppError, AppResult, AppState},
+};
 use chrono::NaiveDate;
-use crate::{db::{schema::companies, Paginate}, server::{ AppError,  AppResult, AppState}};
 
-use utoipa::{ToSchema, OpenApi, ToResponse, IntoParams, self};
-
+use utoipa::{self, IntoParams, OpenApi, ToResponse, ToSchema};
 
 #[derive(OpenApi)]
 #[openapi(
     paths(get_short_companies,get_company),
     components(schemas(ShortCompanyResponse, ShortCompany, Company), responses(ShortCompanyResponse, ShortCompany, Company)),
-    tags(
-        (name = "Companies", description = "All about companies")
-    ),
-    security(
-        ("token_jwt" = [])
-    )
+    tags((name = "Companies", description = "All about companies")),
+    security(("token_jwt" = []))
 )]
 pub struct ApiDoc;
 
 pub fn routes(state: AppState) -> Router<AppState> {
     Router::new()
         .route("/companies", get(get_short_companies))
-        .route("/companies/:ticker",
-            get(get_company)
-        ).with_state(state)
+        .route("/companies/:ticker", get(get_company))
+        .with_state(state)
 }
 
 #[derive(Debug, Serialize, Deserialize, IntoParams)]
@@ -40,7 +42,6 @@ struct ShortCompanyQuery {
     page: Option<i64>,
     per_page: Option<i64>,
 }
-
 
 #[derive(Queryable, Debug, Serialize, Deserialize, Selectable, ToResponse, ToSchema)]
 #[diesel(table_name = companies)]
@@ -61,7 +62,7 @@ struct ShortCompanyResponse {
 }
 
 #[utoipa::path(
-    get, 
+    get,
     path = "companies",
     params(ShortCompanyQuery),
     responses(
@@ -69,24 +70,30 @@ struct ShortCompanyResponse {
             (status = "4XX", body = ErrorMessage, description = "Opusi daisy"),
             (status = "5XX", body = ErrorMessage, description = "Opusi daisy"),
         )
-        
 )]
-async fn get_short_companies(Query(query_params): Query<ShortCompanyQuery>, state: AppState) -> AppResult<ShortCompanyResponse> {
-    let (query, total_pages) = state.db_write().await?
+async fn get_short_companies(
+    Query(query_params): Query<ShortCompanyQuery>,
+    state: AppState,
+) -> AppResult<ShortCompanyResponse> {
+    let (query, total_pages) = state
+        .db_write()
+        .await?
         .interact(move |conn| {
             companies::table
                 .select(ShortCompany::as_select())
                 .paginate(query_params.page.unwrap_or(1))
                 .per_page(query_params.per_page.unwrap_or(25))
-                .load_and_count_pages::<ShortCompany>(conn).map_err(AppError::DatabaseQueryError)
-                
+                .load_and_count_pages::<ShortCompany>(conn)
+                .map_err(AppError::DatabaseQueryError)
         })
-        .await.map_err(AppError::DatabaseConnectionInteractError)??;
+        .await
+        .map_err(AppError::DatabaseConnectionInteractError)??;
 
-        Ok(Json(ShortCompanyResponse{data:query, total_pages}))
+    Ok(Json(ShortCompanyResponse {
+        data: query,
+        total_pages,
+    }))
 }
-
-
 
 #[derive(Debug, Serialize, Deserialize, Queryable, Selectable, ToResponse, ToSchema)]
 #[diesel(table_name = companies)]
@@ -113,11 +120,10 @@ struct Company {
     sector_id: Option<i64>,
     is_adr: bool,
     is_fund: bool,
-
 }
 
 #[utoipa::path(
-    get, 
+    get,
     path = "companies/{ticker}",
     params(("ticker", description = "Company's ticker")),
     responses(
@@ -127,15 +133,20 @@ struct Company {
         )
 )]
 async fn get_company(Path(ticker): Path<String>, state: AppState) -> AppResult<Company> {
-        Ok(Json(state.db_write().await?
-        .interact(move |conn| {
-            companies::table
-                .filter(companies::ticker.eq(ticker))
-                .select(Company::as_select())
-                .first::<Company>(conn)
-                .optional()
-                .map_err(AppError::DatabaseQueryError)
-                
-        })
-        .await.map_err(AppError::DatabaseConnectionInteractError)??.ok_or(AppError::DoesNotExist)?))
+    Ok(Json(
+        state
+            .db_write()
+            .await?
+            .interact(move |conn| {
+                companies::table
+                    .filter(companies::ticker.eq(ticker))
+                    .select(Company::as_select())
+                    .first::<Company>(conn)
+                    .optional()
+                    .map_err(AppError::DatabaseQueryError)
+            })
+            .await
+            .map_err(AppError::DatabaseConnectionInteractError)??
+            .ok_or(AppError::DoesNotExist)?,
+    ))
 }
