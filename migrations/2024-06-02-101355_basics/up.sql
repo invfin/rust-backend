@@ -5,7 +5,7 @@ CREATE TABLE users (
     is_active BOOLEAN NOT NULL DEFAULT FALSE,
     is_superuser BOOLEAN NOT NULL DEFAULT FALSE,
     is_staff BOOLEAN NOT NULL DEFAULT FALSE,
-    is_test BOOLEAN NOT NULL DEFAULT FALSE,
+    is_test BOOLEAN NOT NULL DEFAULT TRUE,
     password VARCHAR NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
@@ -35,10 +35,10 @@ CREATE TABLE currencies (
 CREATE TABLE profiles (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    currency_id BIGINT REFERENCES currencies(id) ON DELETE CASCADE,
-    country_id BIGINT REFERENCES countries(id) ON DELETE CASCADE,
-    first_name VARCHAR NOT NULL DEFAULT '',
-    last_name VARCHAR NOT NULL DEFAULT '',
+    currency_id BIGINT NOT NULL REFERENCES currencies(id) ON DELETE CASCADE,
+    country_id BIGINT NOT NULL REFERENCES countries(id) ON DELETE CASCADE,
+    first_name VARCHAR(255),
+    last_name VARCHAR(255),
     image VARCHAR,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()

@@ -58,7 +58,6 @@ pub enum AppError {
     RoleError,
 }
 
-// How we want errors responses to be serialized
 #[derive(Serialize, ToResponse, ToSchema)]
 pub struct ErrorMessage {
     #[schema(example = "Sorry no sorry, something wrong happened")]

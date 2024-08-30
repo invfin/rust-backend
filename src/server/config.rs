@@ -20,6 +20,7 @@ pub struct Config {
     pub max_upload_size: u64,
     pub domain_name: String,
     pub allowed_origins: AllowedOrigins,
+    pub ips_database: String,
 
     /// Should the server serve the frontend assets in the `dist` directory?
     pub serve_dist: bool,
@@ -51,8 +52,9 @@ impl Config {
             max_blocking_threads: Some(get_env("SERVER_THREADS").parse::<usize>().unwrap()),
             session_key: cookie::Key::derive_from(get_env("SESSION_KEY").as_bytes()),
             max_upload_size: 10 * 1024 * 1024, // 10 MB default file upload size limit
-            domain_name: std::env::var("DOMAIN_NAME").unwrap_or_else(|_| "crates.io".into()),
+            domain_name: get_env("DOMAIN_NAME"),
             allowed_origins: AllowedOrigins::from_default_env(),
+            ips_database: get_env("IPS_DATABASE"),
             serve_dist: true,
             serve_html: true,
         }

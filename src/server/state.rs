@@ -10,7 +10,7 @@ use std::{ops::Deref, sync::Arc};
 pub struct App {
     /// Database connection pool connected to the primary database
     pub primary_database: DeadpoolPool,
-
+    pub ips_database: maxminddb::Reader<Vec<u8>>,
     pub keys: Keys,
 }
 
@@ -62,10 +62,11 @@ impl App {
                 .build()
                 .unwrap()
         };
-
+        let ips_database = maxminddb::Reader::open_readfile(&config.ips_database).unwrap();
         Self {
             keys: Keys::new(get_env("SESSION_KEY").as_bytes()),
             primary_database,
+            ips_database,
         }
     }
 

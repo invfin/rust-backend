@@ -50,6 +50,7 @@ CREATE TABLE accounts (
     category VARCHAR(250) NOT NULL,
     company VARCHAR(250) NOT NULL,
     description TEXT,
+    amount numeric(15,4) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -61,7 +62,7 @@ CREATE TABLE fees (
     percentage bool NOT NULL,
     account_id BIGINT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     recurrence VARCHAR(250) NOT NULL,
-    amount numeric(7,4) NOT NULL,
+    amount numeric(10,4) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -73,7 +74,7 @@ CREATE TABLE rates_return (
     percentage bool NOT NULL,
     account_id BIGINT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     recurrence VARCHAR(250) NOT NULL,
-    amount numeric(7,4) NOT NULL,
+    amount numeric(10,4) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

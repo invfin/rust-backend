@@ -12,6 +12,7 @@ diesel::table! {
         #[max_length = 250]
         company -> Varchar,
         description -> Nullable<Text>,
+        amount -> Numeric,
         created_at -> Timestamp,
         updated_at -> Timestamp,
     }
@@ -618,10 +619,12 @@ diesel::table! {
     profiles (id) {
         id -> Int8,
         user_id -> Int8,
-        currency_id -> Nullable<Int8>,
-        country_id -> Nullable<Int8>,
-        first_name -> Varchar,
-        last_name -> Varchar,
+        currency_id -> Int8,
+        country_id -> Int8,
+        #[max_length = 255]
+        first_name -> Nullable<Varchar>,
+        #[max_length = 255]
+        last_name -> Nullable<Varchar>,
         image -> Nullable<Varchar>,
         created_at -> Timestamp,
         updated_at -> Timestamp,

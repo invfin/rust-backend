@@ -51,7 +51,7 @@ struct JWTClaims {
 }
 
 impl JWTClaims {
-    fn new(user_id: i64, user_role: String) -> Self {
+    fn new(user_id: i64, user_role: &str) -> Self {
         JWTClaims {
             iss: SITE.to_owned(),
             sub: user_id.to_string(),
@@ -59,14 +59,14 @@ impl JWTClaims {
             exp: (Utc::now() + Duration::days(1)).timestamp(),
             iat: get_current_timestamp(),
             jti: Ulid::new().generate(&user_id),
-            rol: user_role,
+            rol: user_role.to_owned(),
         }
     }
 }
 
 pub async fn create_token(
     user_id: i64,
-    user_role: String,
+    user_role: &str,
     state: &AppState,
 ) -> Result<String, AppError> {
     let claims = JWTClaims::new(user_id, user_role);
@@ -82,7 +82,7 @@ pub struct User {
 
 #[derive(Clone)]
 pub struct JWTUserRequest {
-    id: i64,
+    pub id: i64,
     role: String,
 }
 
@@ -113,7 +113,7 @@ pub async fn jwt_middleware(
     let mut validation = Validation::default();
     validation.set_audience(&[SITE]);
     validation.set_issuer(&[SITE]);
-    validation.leeway = 60 * 60 * 60;
+    validation.leeway = 60 * 60 * 60 * 24 * 30; //TODO: keep at one hour instead of days
     validation.reject_tokens_expiring_in_less_than = 86400u64;
     validation.set_required_spec_claims(&["iss", "sub", "aud", "exp", "iat", "jti", "rol"]);
 

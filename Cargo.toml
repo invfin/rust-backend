@@ -43,3 +43,4 @@ utoipauto = "0.1.11"
 futures-util = "0.3.30"
 polars = { version = "0.41.3", features = ["lazy", "dtype-date", "strings", "dtype-struct"] }
 reqwest = { version = "0.11", features = ["json"] }
+maxminddb = "0.24.0"

@@ -1,13 +1,15 @@
-use axum::{routing::post, Json, Router};
+use axum::{extract::ConnectInfo, routing::post, Json, Router};
 use diesel::{
     query_dsl::methods::{FilterDsl, SelectDsl},
-    ExpressionMethods, Insertable, OptionalExtension, Queryable, RunQueryDsl, Selectable,
-    SelectableHelper,
+    Connection, ExpressionMethods, Insertable, OptionalExtension, PgConnection, Queryable,
+    RunQueryDsl, Selectable, SelectableHelper,
 };
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    db::schema::users,
+    countries::{get_country_id, CountryIndexes},
+    currencies::get_currency_from_country,
+    db::schema::{profiles, users},
     server::{create_token, AppError, AppJson, AppResult, AppState},
 };
 
@@ -18,6 +20,10 @@ use argon2::{
 
 use utoipa::OpenApi;
 use utoipa::{ToResponse, ToSchema};
+
+use std::net::SocketAddr;
+
+use maxminddb::geoip2;
 
 #[derive(OpenApi)]
 #[openapi(
@@ -41,8 +47,7 @@ pub fn routes(state: AppState) -> Router<AppState> {
 
 fn hash_password(password: &str) -> String {
     let salt = SaltString::generate(&mut OsRng);
-    let argon2 = Argon2::default();
-    argon2
+    Argon2::default()
         .hash_password(password.as_bytes(), &salt)
         .unwrap()
         .to_string()
@@ -61,15 +66,24 @@ struct NewUser {
 }
 
 impl NewUser {
+    fn default() -> Self {
+        Self {
+            username: String::new(),
+            email: String::new(),
+            is_active: false,
+            is_superuser: false,
+            is_staff: false,
+            is_test: false,
+            password: String::new(),
+        }
+    }
     fn new(query_params: RegisterPayload) -> Self {
         Self {
             username: query_params.username,
             email: query_params.email,
             is_active: true,
-            is_superuser: false,
-            is_staff: false,
-            is_test: false,
             password: hash_password(&query_params.password),
+            ..Self::default()
         }
     }
 }
@@ -90,26 +104,60 @@ struct RegisterPayload {
 #[derive(Debug, Serialize, Deserialize, Queryable, Selectable)]
 #[diesel(table_name = users)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-struct LoginUser {
+struct UserCore {
     id: i64,
     username: String,
     email: String,
+    password: String,
+    is_active: bool,
+    is_superuser: bool,
+    is_staff: bool,
+    is_test: bool,
+}
+impl UserCore {
+    fn role(&self) -> String {
+        "admin".to_owned()
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Insertable,Queryable, Selectable)]
+#[diesel(table_name = profiles)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+struct Profile {
+    user_id: i64,
+    currency_id: i64,
+    country_id: i64,
+    image: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToResponse, ToSchema)]
+#[serde(rename_all = "camelCase")]
 struct LoginResponse {
+    #[serde(skip_serializing)]
+    id: i64,
+    role: String,
     username: String,
     email: String,
+    image: Option<String>,
+    currency_id: i64,
     token: String,
 }
 
 impl LoginResponse {
-    async fn new(user: &LoginUser, state: &AppState) -> AppResult<LoginResponse> {
-        Ok(Json(Self {
+    fn new(user: &UserCore, profile: &Profile) -> Self {
+        Self {
+            id: user.id,
+            role: user.role(),
             username: user.username.clone(),
             email: user.email.clone(),
-            token: create_token(user.id, "admin".to_owned(), state).await?,
-        }))
+            image: profile.image.clone(),
+            currency_id: profile.currency_id,
+            token: String::new(),
+        }
+    }
+    async fn set_token(&mut self, state: &AppState) -> Result<&Self, AppError> {
+        self.token = create_token(self.id, &self.role, state).await?;
+        Ok(self)
     }
 }
 
@@ -128,24 +176,30 @@ async fn login(
     state: AppState,
     AppJson(payload): AppJson<LoginPayload>,
 ) -> AppResult<LoginResponse> {
-    let conn = state.db_write().await?;
-    let (user, password) = conn
+    state
+        .db_write()
+        .await?
         .interact(move |conn| {
-            users::table
+            let user = users::table
                 .filter(users::email.eq(payload.email))
-                .select(((users::id, users::username, users::email), users::password))
-                .first::<(LoginUser, String)>(conn)
+                .select(UserCore::as_select())
+                .first(conn)
                 .optional()
-                .map_err(AppError::DatabaseQueryError)
+                .map_err(AppError::DatabaseQueryError)?
+                .ok_or(AppError::DoesNotExist)?;
+            let parsed_hash = PasswordHash::new(&user.password).unwrap();
+            Argon2::default()
+                .verify_password(payload.password.as_bytes(), &parsed_hash)
+                .map_err(AppError::WrongPassword)?;
+            let profile = profiles::table
+                .filter(profiles::user_id.eq(user.id))
+                .select(Profile::as_select())
+                .first(conn)
+                .map_err(AppError::DatabaseQueryError)?;
+            Ok(Json(LoginResponse::new(&user, &profile)))
         })
         .await
-        .map_err(AppError::DatabaseConnectionInteractError)??
-        .ok_or(AppError::DoesNotExist)?;
-    let parsed_hash = PasswordHash::new(&password).unwrap();
-    Argon2::default()
-        .verify_password(payload.password.as_bytes(), &parsed_hash)
-        .map_err(AppError::WrongPassword)?;
-    LoginResponse::new(&user, &state).await
+        .map_err(AppError::DatabaseConnectionInteractError)?
 }
 
 #[utoipa::path(
@@ -161,19 +215,50 @@ async fn login(
 )]
 async fn register(
     state: AppState,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     AppJson(payload): AppJson<RegisterPayload>,
 ) -> AppResult<LoginResponse> {
-    let user = state
+    let country_iso = get_country_from_ip(&state.ips_database, &addr);
+    let mut user: LoginResponse = state
         .db_write()
         .await?
         .interact(move |conn| {
-            diesel::insert_into(users::table)
-                .values(NewUser::new(payload))
-                .returning(LoginUser::as_returning())
-                .get_result(conn)
-                .map_err(AppError::DatabaseQueryError)
+            conn.transaction::<LoginResponse, AppError, _>(|conn| {
+                let user = diesel::insert_into(users::table)
+                    .values(NewUser::new(payload))
+                    .returning(UserCore::as_returning())
+                    .get_result(conn)
+                    .map_err(AppError::DatabaseQueryError)?;
+                let profile = create_profile(user.id, country_iso, conn)?;
+                Ok(LoginResponse::new(&user, &profile))
+            })
         })
         .await
         .map_err(AppError::DatabaseConnectionInteractError)??;
-    LoginResponse::new(&user, &state).await
+    user.set_token(&state).await?;
+    Ok(Json(user))
+}
+fn get_country_from_ip(ips_database: &maxminddb::Reader<Vec<u8>>, addr: &SocketAddr) -> String {
+    let city: geoip2::City = ips_database.lookup(addr.ip()).unwrap();
+    city.country.unwrap().iso_code.unwrap().to_owned()
+}
+
+fn create_profile(
+    user_id: i64,
+    country_iso: String,
+    conn: &mut PgConnection,
+) -> Result<Profile, AppError> {
+    let country_id = get_country_id(CountryIndexes::Iso(country_iso), conn)?;
+    let currency_id = get_currency_from_country(country_id, conn)?;
+    let profile = Profile {
+        user_id,
+        currency_id,
+        country_id,
+        image: None,
+    };
+    diesel::insert_into(profiles::table)
+        .values(&profile)
+        .execute(conn)
+        .map_err(AppError::DatabaseQueryError)?;
+    Ok(profile)
 }

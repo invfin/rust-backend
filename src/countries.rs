@@ -128,6 +128,26 @@ async fn read_country(Path(id): Path<i64>, state: AppState) -> AppResult<Country
     ))
 }
 
+pub enum CountryIndexes {
+    Id(i64),
+    Iso(String),
+}
+
+pub fn get_country_id(idx: CountryIndexes, conn: &mut PgConnection) -> Result<i64, AppError> {
+    match idx {
+        CountryIndexes::Id(v) => countries::table
+            .filter(countries::id.eq(v))
+            .select(countries::id)
+            .first(conn)
+            .map_err(AppError::DatabaseQueryError),
+        CountryIndexes::Iso(v) => countries::table
+            .filter(countries::iso.eq(v))
+            .select(countries::id)
+            .first(conn)
+            .map_err(AppError::DatabaseQueryError),
+    }
+}
+
 #[utoipa::path(
     put,
     path = "countries/{id}",

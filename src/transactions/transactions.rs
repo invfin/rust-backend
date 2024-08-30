@@ -90,8 +90,8 @@ impl TransactionFile {
 struct TransactionsFilesRequest {
     user_id: i64,
     source: Source,
-    account: String,
     account_id: Option<i64>,
+    currency_id: Option<i64>,
     files: Vec<TransactionFile>,
 }
 
@@ -121,16 +121,21 @@ impl TransactionsFilesRequest {
             let name = field.name().unwrap();
             let file_name = field.file_name().unwrap().to_owned();
             match name {
-                "account_id" => {
-                    let data = match field.bytes().await {
-                        Ok(v) => String::from_utf8(v.to_vec())
-                            .unwrap()
-                            .parse::<i64>()
-                            .ok(),
+                "source" => {
+                    let data = field.bytes().await.unwrap();
+                    request.source = Source::from_bytes(&data);
+                }
+                "currencyId" => {
+                    request.currency_id = match field.bytes().await {
+                        Ok(v) => String::from_utf8(v.to_vec()).unwrap().parse::<i64>().ok(),
                         Err(_e) => None,
                     };
-
-                    request.account_id = data;
+                }
+                "account_id" => {
+                    request.account_id = match field.bytes().await {
+                        Ok(v) => String::from_utf8(v.to_vec()).unwrap().parse::<i64>().ok(),
+                        Err(_e) => None,
+                    };
                 }
                 _ => {
                     let data = field.bytes().await.unwrap();

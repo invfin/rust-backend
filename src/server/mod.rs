@@ -8,7 +8,7 @@ mod tracing;
 mod ulid;
 mod versioning;
 
-pub use auth::create_token;
+pub use auth::{create_token, JWTUserRequest};
 pub use config::{Config, EnvIs};
 pub use responses::{AppError, AppJson, AppResult, ErrorMessage};
 pub use router::get_router;
