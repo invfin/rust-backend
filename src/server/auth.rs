@@ -121,7 +121,11 @@ pub async fn jwt_middleware(
         .map_err(AppError::JWTError)?;
 
     request.extensions_mut().insert(JWTUserRequest {
-        id: token_data.claims.sub.parse::<i64>().unwrap(),
+        id: token_data
+            .claims
+            .sub
+            .parse::<i64>()
+            .map_err(AppError::JWTModified)?,
         role: token_data.claims.rol,
     });
 

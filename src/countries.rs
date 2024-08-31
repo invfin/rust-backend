@@ -103,9 +103,7 @@ async fn create_country(state: AppState, Json(country): Json<Country>) -> AppRes
 #[utoipa::path(
     get,
     path = "countries/{id}",
-    params(
-        ("id" = i64, Path, description = "Country ID")
-    ),
+    params(("id" = i64, Path, description = "Country ID")),
     responses(
         (status = 200, body = Country, description = "Read a country by ID"),
         (status = "4XX", body = ErrorMessage, description = "Client error"),
@@ -128,12 +126,15 @@ async fn read_country(Path(id): Path<i64>, state: AppState) -> AppResult<Country
     ))
 }
 
-pub enum CountryIndexes {
+pub enum CountryIndexes<'a> {
     Id(i64),
-    Iso(String),
+    Iso(&'a str),
 }
 
-pub fn get_country_id(idx: CountryIndexes, conn: &mut PgConnection) -> Result<i64, AppError> {
+pub fn get_country_id<'a>(
+    idx: CountryIndexes<'a>,
+    conn: &mut PgConnection,
+) -> Result<i64, AppError> {
     match idx {
         CountryIndexes::Id(v) => countries::table
             .filter(countries::id.eq(v))

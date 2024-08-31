@@ -27,7 +27,7 @@ use maxminddb::geoip2;
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(login,register),
+    paths(login, register),
     components(
         schemas(LoginPayload, RegisterPayload, LoginResponse),
         responses(LoginResponse)
@@ -45,12 +45,12 @@ pub fn routes(state: AppState) -> Router<AppState> {
         .with_state(state)
 }
 
-fn hash_password(password: &str) -> String {
+fn hash_password(password: &str) -> Result<String, AppError> {
     let salt = SaltString::generate(&mut OsRng);
-    Argon2::default()
+    Ok(Argon2::default()
         .hash_password(password.as_bytes(), &salt)
-        .unwrap()
-        .to_string()
+        .map_err(AppError::ErrorHashingPassword)?
+        .to_string())
 }
 
 #[derive(Debug, Deserialize, Serialize, Insertable)]
@@ -77,14 +77,14 @@ impl NewUser {
             password: String::new(),
         }
     }
-    fn new(query_params: RegisterPayload) -> Self {
-        Self {
+    fn new(query_params: RegisterPayload) -> Result<Self, AppError> {
+        Ok(Self {
             username: query_params.username,
             email: query_params.email,
             is_active: true,
-            password: hash_password(&query_params.password),
+            password: hash_password(&query_params.password)?,
             ..Self::default()
-        }
+        })
     }
 }
 
@@ -120,7 +120,7 @@ impl UserCore {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Insertable,Queryable, Selectable)]
+#[derive(Debug, Serialize, Deserialize, Insertable, Queryable, Selectable)]
 #[diesel(table_name = profiles)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 struct Profile {
@@ -187,7 +187,8 @@ async fn login(
                 .optional()
                 .map_err(AppError::DatabaseQueryError)?
                 .ok_or(AppError::DoesNotExist)?;
-            let parsed_hash = PasswordHash::new(&user.password).unwrap();
+            let parsed_hash =
+                PasswordHash::new(&user.password).map_err(AppError::ErrorHashingPassword)?;
             Argon2::default()
                 .verify_password(payload.password.as_bytes(), &parsed_hash)
                 .map_err(AppError::WrongPassword)?;
@@ -218,18 +219,18 @@ async fn register(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     AppJson(payload): AppJson<RegisterPayload>,
 ) -> AppResult<LoginResponse> {
-    let country_iso = get_country_from_ip(&state.ips_database, &addr);
+    let country_iso = get_country_from_ip(&state.ips_database, &addr)?.to_owned();
     let mut user: LoginResponse = state
         .db_write()
         .await?
         .interact(move |conn| {
             conn.transaction::<LoginResponse, AppError, _>(|conn| {
                 let user = diesel::insert_into(users::table)
-                    .values(NewUser::new(payload))
+                    .values(NewUser::new(payload)?)
                     .returning(UserCore::as_returning())
                     .get_result(conn)
                     .map_err(AppError::DatabaseQueryError)?;
-                let profile = create_profile(user.id, country_iso, conn)?;
+                let profile = create_profile(user.id, &country_iso, conn)?;
                 Ok(LoginResponse::new(&user, &profile))
             })
         })
@@ -238,14 +239,23 @@ async fn register(
     user.set_token(&state).await?;
     Ok(Json(user))
 }
-fn get_country_from_ip(ips_database: &maxminddb::Reader<Vec<u8>>, addr: &SocketAddr) -> String {
-    let city: geoip2::City = ips_database.lookup(addr.ip()).unwrap();
-    city.country.unwrap().iso_code.unwrap().to_owned()
+
+fn get_country_from_ip<'a>(
+    ips_database: &'a maxminddb::Reader<Vec<u8>>,
+    addr: &'a SocketAddr,
+) -> Result<&'a str, AppError> {
+    ips_database
+        .lookup::<geoip2::City>(addr.ip())
+        .map_err(AppError::IpError)?
+        .country
+        .ok_or(AppError::IpDataNotFound)?
+        .iso_code
+        .ok_or(AppError::IpDataNotFound)
 }
 
 fn create_profile(
     user_id: i64,
-    country_iso: String,
+    country_iso: &str,
     conn: &mut PgConnection,
 ) -> Result<Profile, AppError> {
     let country_id = get_country_id(CountryIndexes::Iso(country_iso), conn)?;

@@ -1,7 +1,8 @@
 use axum::{routing::post, Extension, Json, Router};
 use bigdecimal::BigDecimal;
 use diesel::{
-    prelude::Queryable, ExpressionMethods, Insertable, RunQueryDsl, Selectable, SelectableHelper,
+    prelude::Queryable, Connection, ExpressionMethods, Insertable, RunQueryDsl, Selectable,
+    SelectableHelper,
 };
 use serde::{Deserialize, Serialize};
 use utoipa::{self, OpenApi, ToSchema};
@@ -78,6 +79,7 @@ impl Rate {
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 struct Amount {
     description: Option<String>,
     percentage: bool,
@@ -89,6 +91,7 @@ struct Amount {
 #[derive(Debug, Selectable, Queryable, Serialize, Deserialize, ToSchema)]
 #[diesel(table_name = accounts)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
+#[serde(rename_all = "camelCase")]
 struct AccountCore {
     id: i64,
     company: String,
@@ -98,6 +101,7 @@ struct AccountCore {
 #[derive(Debug, Insertable, Serialize, Deserialize, ToSchema)]
 #[diesel(table_name = accounts)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
+#[serde(rename_all = "camelCase")]
 struct Account {
     name: String,
     category: String,
@@ -109,6 +113,7 @@ struct Account {
 
 #[derive(Debug, ToSchema, Serialize, Deserialize)]
 struct AccountRequest {
+    #[serde(flatten)]
     account: Account,
     fees: Vec<Amount>,
     rates: Vec<Amount>,
@@ -129,47 +134,44 @@ async fn create_account(
     Extension(current_user): Extension<JWTUserRequest>,
     Json(req): Json<AccountRequest>,
 ) -> AppResult<AccountCore> {
-    Ok(Json(
-        state
-            .db_write()
-            .await?
-            .interact(move |conn| {
+    state
+        .db_write()
+        .await?
+        .interact(move |conn| {
+            conn.transaction(|conn| {
                 let account = diesel::insert_into(accounts::table)
                     .values((accounts::user_id.eq(current_user.id), req.account))
                     .returning(AccountCore::as_returning())
                     .get_result(conn)
-                    .map_err(AppError::DatabaseQueryError);
-                if account.is_ok() {
-                    let pk = account.as_ref().unwrap().id;
-                    if !req.fees.is_empty() {
-                        let fees = req
-                            .fees
-                            .iter()
-                            .map(|f| Fee::new(f, pk))
-                            .collect::<Vec<Fee>>();
-                        diesel::insert_into(fees::table)
-                            .values(fees)
-                            .execute(conn)
-                            .map_err(AppError::DatabaseQueryError)?;
-                    }
-                    if !req.rates.is_empty() {
-                        let rates = req
-                            .rates
-                            .iter()
-                            .map(|f| Rate::new(f, pk))
-                            .collect::<Vec<Rate>>();
-                        diesel::insert_into(rates_return::table)
-                            .values(rates)
-                            .execute(conn)
-                            .map_err(AppError::DatabaseQueryError)?;
-                    }
+                    .map_err(AppError::DatabaseQueryError)?;
+                let pk = account.id;
+                if !req.fees.is_empty() {
+                    let fees = req
+                        .fees
+                        .iter()
+                        .map(|f| Fee::new(f, pk))
+                        .collect::<Vec<Fee>>();
+                    diesel::insert_into(fees::table)
+                        .values(fees)
+                        .execute(conn)
+                        .map_err(AppError::DatabaseQueryError)?;
                 }
-
-                account
+                if !req.rates.is_empty() {
+                    let rates = req
+                        .rates
+                        .iter()
+                        .map(|f| Rate::new(f, pk))
+                        .collect::<Vec<Rate>>();
+                    diesel::insert_into(rates_return::table)
+                        .values(rates)
+                        .execute(conn)
+                        .map_err(AppError::DatabaseQueryError)?;
+                }
+                Ok(Json(account))
             })
-            .await
-            .map_err(AppError::DatabaseConnectionInteractError)??,
-    ))
+        })
+        .await
+        .map_err(AppError::DatabaseConnectionInteractError)?
 }
 
 #[utoipa::path(
@@ -183,16 +185,18 @@ async fn create_account(
     )
 )]
 async fn create_rate(state: AppState, Json(rate): Json<Fee>) -> AppResult<Fee> {
-    let conn = state.db_write().await?;
-    let result = conn
-        .interact(move |conn| {
-            diesel::insert_into(fees::table)
-                .values(&rate)
-                .returning(Fee::as_returning())
-                .get_result(conn)
-                .map_err(AppError::DatabaseQueryError)
-        })
-        .await
-        .map_err(AppError::DatabaseConnectionInteractError)??;
-    Ok(Json(result))
+    Ok(Json(
+        state
+            .db_write()
+            .await?
+            .interact(move |conn| {
+                diesel::insert_into(fees::table)
+                    .values(&rate)
+                    .returning(Fee::as_returning())
+                    .get_result(conn)
+                    .map_err(AppError::DatabaseQueryError)
+            })
+            .await
+            .map_err(AppError::DatabaseConnectionInteractError)??,
+    ))
 }

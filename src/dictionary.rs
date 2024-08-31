@@ -181,37 +181,34 @@ async fn get_definition(
     Path(slug): Path<String>,
     state: AppState,
 ) -> AppResult<DefinitionResponse> {
-    Ok(Json(
-        state
-            .db_write()
-            .await?
-            .interact(move |conn| {
-                let definition = definitions::table
-                    .filter(definitions::slug.eq(slug))
-                    .select(Definition::as_select())
-                    .first::<Definition>(conn)
-                    .optional()
-                    .map_err(AppError::DatabaseQueryError)
-                    .unwrap();
+    state
+        .db_write()
+        .await?
+        .interact(move |conn| {
+            let definition = definitions::table
+                .filter(definitions::slug.eq(slug))
+                .select(Definition::as_select())
+                .first::<Definition>(conn)
+                .optional()
+                .map_err(AppError::DatabaseQueryError)?;
 
-                match definition {
-                    Some(v) => {
-                        let content = DefinitionContent::belonging_to(&v)
-                            .select(DefinitionContent::as_select())
-                            .load::<DefinitionContent>(conn)
-                            .map_err(AppError::DatabaseQueryError);
+            match definition {
+                Some(v) => {
+                    let content = DefinitionContent::belonging_to(&v)
+                        .select(DefinitionContent::as_select())
+                        .load::<DefinitionContent>(conn)
+                        .map_err(AppError::DatabaseQueryError);
 
-                        match content {
-                            Ok(q) => Ok(DefinitionResponse {
-                                definition: v,
-                                content: q,
-                            }),
-                            Err(_e) => Err(AppError::DoesNotExist),
-                        }
+                    match content {
+                        Ok(q) => Ok(Json(DefinitionResponse {
+                            definition: v,
+                            content: q,
+                        })),
+                        Err(_e) => Err(AppError::DoesNotExist),
                     }
-                    None => Err(AppError::DoesNotExist),
                 }
-            })
-            .await??,
-    ))
+                None => Err(AppError::DoesNotExist),
+            }
+        })
+        .await?
 }

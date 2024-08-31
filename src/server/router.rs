@@ -115,14 +115,12 @@ use std::sync::atomic::Ordering;
 
 impl MakeRequestId for MyMakeRequestId {
     fn make_request_id<B>(&mut self, _request: &Request<B>) -> Option<RequestId> {
-        let request_id = self
-            .counter
+        self.counter
             .fetch_add(1, Ordering::SeqCst)
             .to_string()
             .parse()
-            .unwrap();
-
-        Some(RequestId::new(request_id))
+            .ok()
+            .map(|r| RequestId::new(r))
     }
 }
 

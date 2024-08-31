@@ -1,8 +1,11 @@
+use std::num::ParseIntError;
+
 use axum::{
     extract::{rejection::JsonRejection, FromRequest},
     http::StatusCode,
     response::{IntoResponse, Json, Response},
 };
+use maxminddb::MaxMindDBError;
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToResponse, ToSchema};
 
@@ -47,15 +50,26 @@ where
 
 #[derive(Debug)]
 pub enum AppError {
+    //
     WrongPassword(argon2::password_hash::Error),
+    ErrorHashingPassword(argon2::password_hash::Error),
     // The request body contained invalid JSON
     JsonRejection(JsonRejection),
+    //
     JWTError(jsonwebtoken::errors::Error),
+    JWTModified(ParseIntError),
+    //
     DatabaseQueryError(diesel::result::Error),
     DatabaseConnectionInteractError(deadpool_diesel::InteractError),
     DatabasePoolError(deadpool_diesel::PoolError),
     DoesNotExist,
+    //
     RoleError,
+    //
+    UnexpectedError(Box<dyn std::error::Error + Send + Sync>),
+    //
+    IpError(MaxMindDBError),
+    IpDataNotFound,
 }
 
 #[derive(Serialize, ToResponse, ToSchema)]
@@ -71,9 +85,22 @@ impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         tracing::error!("{:?}", self);
         let (status, message) = match self {
+            AppError::ErrorHashingPassword(err) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
+            AppError::WrongPassword(_err) => {
+                (StatusCode::NOT_FOUND, "Contraseña incorrecta".to_owned())
+            }
+            //
             AppError::JsonRejection(rejection) => (rejection.status(), rejection.body_text()),
+
             AppError::JWTError(err) => (StatusCode::UNAUTHORIZED, err.to_string()),
+            AppError::JWTModified(err) => (StatusCode::UNAUTHORIZED, err.to_string()),
+
             AppError::RoleError => (StatusCode::UNAUTHORIZED, "Not authorized".to_string()),
+
+            AppError::UnexpectedError(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
+
             AppError::DatabaseQueryError(err) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
@@ -83,10 +110,10 @@ impl IntoResponse for AppError {
             AppError::DatabasePoolError(err) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
-            AppError::WrongPassword(_err) => {
-                (StatusCode::NOT_FOUND, "Contraseña incorrecta".to_owned())
-            }
             AppError::DoesNotExist => (StatusCode::NOT_FOUND, "Not found".to_owned()),
+
+            AppError::IpError(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
+            AppError::IpDataNotFound => (StatusCode::INTERNAL_SERVER_ERROR, "Ip wrong".to_owned()),
         };
 
         (status, Json(ErrorMessage { message })).into_response()

@@ -1,5 +1,5 @@
 # TODO
-- [ ] Create accounts
+- [X] Create accounts
 - [ ] Create transactions for account
 - [ ] Save custom dashboards (db table, model, endpoint), load dashboard
 - [ ] Create endpoints for the dashboards to get data

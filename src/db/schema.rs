@@ -465,13 +465,8 @@ diesel::table! {
 diesel::table! {
     investment_details (id) {
         id -> Int8,
-        fee -> Numeric,
-        quantity -> Numeric,
+        quantity -> Float8,
         cost -> Numeric,
-        amount -> Numeric,
-        date -> Date,
-        currency_id -> Int8,
-        amount_converted -> Numeric,
         asset_id -> Int8,
         created_at -> Timestamp,
         updated_at -> Timestamp,
@@ -700,22 +695,9 @@ diesel::table! {
         comment -> Nullable<Text>,
         #[max_length = 250]
         file -> Nullable<Varchar>,
-        currency_id -> Int8,
         investment_details_id -> Nullable<Int8>,
+        fee -> Numeric,
         original_amount -> Numeric,
-        created_at -> Timestamp,
-        updated_at -> Timestamp,
-    }
-}
-
-diesel::table! {
-    transactions_files (id) {
-        id -> Int8,
-        user_id -> Int8,
-        #[max_length = 255]
-        name -> Varchar,
-        #[max_length = 255]
-        path -> Varchar,
         created_at -> Timestamp,
         updated_at -> Timestamp,
     }
@@ -793,7 +775,6 @@ diesel::joinable!(income_statements -> companies (company_id));
 diesel::joinable!(income_statements -> currencies (reported_currency_id));
 diesel::joinable!(income_statements -> periods (period_id));
 diesel::joinable!(investment_details -> assets_details (asset_id));
-diesel::joinable!(investment_details -> currencies (currency_id));
 diesel::joinable!(liquidity_ratios -> companies (company_id));
 diesel::joinable!(liquidity_ratios -> currencies (reported_currency_id));
 diesel::joinable!(liquidity_ratios -> periods (period_id));
@@ -823,9 +804,7 @@ diesel::joinable!(transactions -> accounts (account_id));
 diesel::joinable!(transactions -> exchange_rates (exchange_rate_id));
 diesel::joinable!(transactions -> transactions_details (details_id));
 diesel::joinable!(transactions -> users (user_id));
-diesel::joinable!(transactions_details -> currencies (currency_id));
 diesel::joinable!(transactions_details -> investment_details (investment_details_id));
-diesel::joinable!(transactions_files -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     accounts,
@@ -864,7 +843,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     sectors,
     transactions,
     transactions_details,
-    transactions_files,
     users,
     widget,
 );

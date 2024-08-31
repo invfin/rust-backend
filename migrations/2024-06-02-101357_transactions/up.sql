@@ -1,12 +1,3 @@
-CREATE TABLE transactions_files (
-    id BIGSERIAL NOT NULL PRIMARY KEY,
-    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL,
-    path VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
 CREATE TABLE assets_details (
     id BIGSERIAL NOT NULL PRIMARY KEY,
     category VARCHAR(50) NOT NULL,
@@ -18,13 +9,8 @@ CREATE TABLE assets_details (
 
 CREATE TABLE investment_details (
     id BIGSERIAL NOT NULL PRIMARY KEY,
-    fee numeric NOT NULL,
-    quantity numeric NOT NULL,
-    cost numeric NOT NULL,
-    amount numeric NOT NULL,
-    date DATE NOT NULL,
-    currency_id BIGINT NOT NULL REFERENCES currencies(id) ON DELETE CASCADE,
-    amount_converted numeric NOT NULL,
+    quantity double precision NOT NULL,
+    cost numeric(15,4) NOT NULL,
     asset_id BIGINT NOT NULL REFERENCES assets_details(id) ON DELETE CASCADE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -35,9 +21,9 @@ CREATE TABLE transactions_details (
     description TEXT,
     comment TEXT,
     file VARCHAR(250),
-    currency_id BIGINT NOT NULL REFERENCES currencies(id) ON DELETE CASCADE,
     investment_details_id BIGINT REFERENCES investment_details(id) ON DELETE CASCADE,
-    original_amount numeric NOT NULL,
+    fee numeric(15,4) NOT NULL,
+    original_amount numeric(15,4) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -62,7 +48,7 @@ CREATE TABLE fees (
     percentage bool NOT NULL,
     account_id BIGINT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     recurrence VARCHAR(250) NOT NULL,
-    amount numeric(10,4) NOT NULL,
+    amount numeric(15,4) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -74,7 +60,7 @@ CREATE TABLE rates_return (
     percentage bool NOT NULL,
     account_id BIGINT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     recurrence VARCHAR(250) NOT NULL,
-    amount numeric(10,4) NOT NULL,
+    amount numeric(15,4) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -87,9 +73,8 @@ CREATE TABLE transactions (
     account_id BIGINT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     exchange_rate_id BIGINT REFERENCES exchange_rates(id) ON DELETE CASCADE,
     "date" DATE NOT NULL,
-    amount numeric NOT NULL,
+    amount numeric(15,4) NOT NULL,
     category VARCHAR(50) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-

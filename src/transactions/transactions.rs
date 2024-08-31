@@ -2,16 +2,18 @@ use axum::{
     body::Bytes,
     extract::{DefaultBodyLimit, Multipart},
     routing::post,
-    Json, Router,
+    Extension, Json, Router,
 };
-use diesel::Insertable;
+use bigdecimal::BigDecimal;
+use diesel::prelude::*;
 use futures_util::{stream::FuturesUnordered, StreamExt};
+use serde::{Deserialize, Serialize};
 use tokio::io::AsyncWriteExt;
-use utoipa::{self, OpenApi};
+use utoipa::{self, OpenApi, ToSchema};
 
 use crate::{
-    db::schema::transactions_files,
-    server::{AppError, AppResult},
+    db::schema::{assets_details, investment_details, transactions, transactions_details},
+    server::{AppError, AppResult, JWTUserRequest},
     AppState,
 };
 
@@ -21,7 +23,8 @@ const CONTENT_LENGTH_LIMIT: usize = 20 * 1024 * 1024;
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(upload_transactions_file),
+    paths(upload_transactions_file, create_transaction),
+    components(schemas(AssetDetail, InvestmentDetail, TransactionDetail, Transaction, TransactionRequest)),
     security(("token_jwt" = []))
 )]
 pub struct ApiDoc;
@@ -30,6 +33,7 @@ pub fn routes(state: AppState) -> Router<AppState> {
     Router::new()
         .route("/upload/transactions", post(upload_transactions_file))
         .layer(DefaultBodyLimit::max(CONTENT_LENGTH_LIMIT))
+        .route("/transactions", post(create_transaction))
         .with_state(state)
 }
 
@@ -93,25 +97,6 @@ struct TransactionsFilesRequest {
     account_id: Option<i64>,
     currency_id: Option<i64>,
     files: Vec<TransactionFile>,
-}
-
-#[derive(Insertable)]
-#[diesel(table_name = transactions_files)]
-#[diesel(check_for_backend(diesel::pg::Pg))]
-struct TransactionsFile {
-    user_id: i64,
-    name: String,
-    path: String,
-}
-
-impl TransactionsFile {
-    fn new(user_id: i64, file: &TransactionFile) -> Self {
-        Self {
-            user_id,
-            name: file.name.clone(),
-            path: file.path(),
-        }
-    }
 }
 
 impl TransactionsFilesRequest {
@@ -182,4 +167,122 @@ async fn upload_transactions_file(state: AppState, mut multipart: Multipart) -> 
         .await
         .map_err(AppError::DatabaseConnectionInteractError)?;
     request.save().await
+}
+
+#[derive(Debug, Deserialize, Serialize, Insertable, ToSchema)]
+#[diesel(table_name = assets_details)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+struct AssetDetail {
+    category: String,
+    name: String,
+    company_id: Option<i64>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Insertable, ToSchema)]
+#[diesel(table_name = investment_details)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+struct InvestmentDetail {
+    quantity: f64,
+    cost: BigDecimal,
+    #[serde(skip)]
+    asset_id: i64,
+}
+
+#[derive(Debug, Deserialize, Serialize, Insertable, ToSchema)]
+#[diesel(table_name = transactions_details)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+struct TransactionDetail {
+    description: Option<String>,
+    comment: Option<String>,
+    original_amount: BigDecimal,
+    fee: BigDecimal,
+}
+
+#[derive(Debug, Deserialize, Serialize, Insertable, ToSchema)]
+#[diesel(table_name = transactions)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+struct Transaction {
+    #[serde(skip)]
+    user_id: i64,
+    #[serde(skip)]
+    details_id: Option<i64>, //TODO: use option instead of skip?
+    account_id: i64,
+    date: chrono::NaiveDate,
+    amount: BigDecimal,
+    category: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
+struct TransactionRequest {
+    details: TransactionDetail,
+    investment_details: Option<InvestmentDetail>,
+    transaction: Transaction,
+    asset: Option<AssetDetail>,
+}
+
+#[utoipa::path(
+    post,
+    path = "transactions",
+    tag = "Transactions",
+    request_body = TransactionRequest,
+    responses(
+        (status = 201, body = usize, description = "Created transactions"),
+        (status = "4XX", body = ErrorMessage, description = "Validation errors"),
+        (status = "5XX", body = ErrorMessage, description = "Internal server error")
+    )
+)]
+async fn create_transaction(
+    state: AppState,
+    Extension(current_user): Extension<JWTUserRequest>,
+    Json(req): Json<TransactionRequest>,
+) -> AppResult<i64> {
+    state
+        .db_write()
+        .await?
+        .interact(move |conn| {
+            conn.transaction(|conn| {
+                let mut investment_details_id: Option<i64> = None;
+                if req.investment_details.is_some() && req.asset.is_some() {
+                    let asset = req.asset.unwrap();
+                    let asset_id: i64 = diesel::insert_into(assets_details::table)
+                        .values(asset)
+                        .returning(assets_details::id)
+                        .get_result(conn)
+                        .map_err(AppError::DatabaseQueryError)?;
+
+                    let mut investment = req.investment_details.unwrap();
+                    investment.asset_id = asset_id;
+                    investment_details_id = Some(
+                        diesel::insert_into(investment_details::table)
+                            .values(investment)
+                            .returning(investment_details::id)
+                            .get_result(conn)
+                            .map_err(AppError::DatabaseQueryError)?,
+                    );
+                }
+
+                let details_id: i64 = diesel::insert_into(transactions_details::table)
+                    .values((
+                        transactions_details::investment_details_id.eq(investment_details_id),
+                        req.details,
+                    ))
+                    .returning(transactions_details::id)
+                    .get_result(conn)
+                    .map_err(AppError::DatabaseQueryError)?;
+
+                let mut transaction = req.transaction;
+                transaction.user_id = current_user.id;
+                transaction.details_id = Some(details_id);
+
+                let transaction_id = diesel::insert_into(transactions::table)
+                    .values(transaction)
+                    .returning(transactions::id)
+                    .get_result(conn)
+                    .map_err(AppError::DatabaseQueryError)?;
+
+                Ok(Json(transaction_id))
+            })
+        })
+        .await
+        .map_err(AppError::DatabaseConnectionInteractError)?
 }

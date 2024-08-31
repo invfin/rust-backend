@@ -52,10 +52,6 @@ fn main() -> Result<(), i16> {
     // Block the main thread until the server has shutdown
     rt.block_on(async {
         let listener = TcpListener::bind((config.ip, config.port)).await?;
-        info!(
-            "Server started! http://{:?}",
-            listener.local_addr().unwrap()
-        );
 
         axum::serve(listener, service)
             .with_graceful_shutdown(shutdown_signal())
