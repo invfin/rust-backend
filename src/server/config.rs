@@ -3,6 +3,8 @@ use axum::http::HeaderValue;
 use menva::{get_env, get_int_env};
 use std::net::IpAddr;
 
+use super::{init_dev_tracing, init_prod_tracing};
+
 #[derive(Debug)]
 pub enum EnvIs {
     Dev,
@@ -31,6 +33,13 @@ pub struct Config {
 }
 
 impl Config {
+    pub fn init_tracing(self) -> Self {
+        match self.env {
+            EnvIs::Dev => init_dev_tracing(),
+            EnvIs::Prod => init_prod_tracing(),
+        };
+        self
+    }
     /// Returns a default value for the application's config
     ///
     /// Sets the following default values:

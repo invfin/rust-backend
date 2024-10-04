@@ -116,7 +116,12 @@ struct UserCore {
 }
 impl UserCore {
     fn role(&self) -> String {
-        "admin".to_owned()
+        match (self.is_staff, self.is_superuser) {
+            (false, true) | (true, true) => "super",
+            (true, false) => "staff",
+            (false, false) => "reg",
+        }
+        .to_owned()
     }
 }
 
@@ -155,8 +160,8 @@ impl LoginResponse {
             token: String::new(),
         }
     }
-    async fn set_token(&mut self, state: &AppState) -> Result<&Self, AppError> {
-        self.token = create_token(self.id, &self.role, state).await?;
+    fn set_token(mut self, state: &AppState) -> Result<Self, AppError> {
+        self.token = create_token(self.id, &self.role, state)?;
         Ok(self)
     }
 }
@@ -197,10 +202,11 @@ async fn login(
                 .select(Profile::as_select())
                 .first(conn)
                 .map_err(AppError::DatabaseQueryError)?;
-            Ok(Json(LoginResponse::new(&user, &profile)))
+            LoginResponse::new(&user, &profile).set_token(&state)
         })
         .await
         .map_err(AppError::DatabaseConnectionInteractError)?
+        .map(Json)
 }
 
 #[utoipa::path(
@@ -220,7 +226,7 @@ async fn register(
     AppJson(payload): AppJson<RegisterPayload>,
 ) -> AppResult<LoginResponse> {
     let country_iso = get_country_from_ip(&state.ips_database, &addr)?.to_owned();
-    let mut user: LoginResponse = state
+    state
         .db_write()
         .await?
         .interact(move |conn| {
@@ -231,19 +237,22 @@ async fn register(
                     .get_result(conn)
                     .map_err(AppError::DatabaseQueryError)?;
                 let profile = create_profile(user.id, &country_iso, conn)?;
-                Ok(LoginResponse::new(&user, &profile))
+                LoginResponse::new(&user, &profile).set_token(&state)
             })
         })
         .await
-        .map_err(AppError::DatabaseConnectionInteractError)??;
-    user.set_token(&state).await?;
-    Ok(Json(user))
+        .map_err(AppError::DatabaseConnectionInteractError)?
+        .map(Json)
 }
 
 fn get_country_from_ip<'a>(
     ips_database: &'a maxminddb::Reader<Vec<u8>>,
     addr: &'a SocketAddr,
 ) -> Result<&'a str, AppError> {
+    //Disable this when on prod
+    if addr.ip().is_loopback() {
+        return Ok("ES");
+    }
     ips_database
         .lookup::<geoip2::City>(addr.ip())
         .map_err(AppError::IpError)?

@@ -66,8 +66,6 @@ pub enum AppError {
     //
     RoleError,
     //
-    UnexpectedError(Box<dyn std::error::Error + Send + Sync>),
-    //
     IpError(MaxMindDBError),
     IpDataNotFound,
 }
@@ -98,8 +96,6 @@ impl IntoResponse for AppError {
             AppError::JWTModified(err) => (StatusCode::UNAUTHORIZED, err.to_string()),
 
             AppError::RoleError => (StatusCode::UNAUTHORIZED, "Not authorized".to_string()),
-
-            AppError::UnexpectedError(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
 
             AppError::DatabaseQueryError(err) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())

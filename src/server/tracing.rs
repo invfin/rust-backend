@@ -35,7 +35,9 @@ pub fn init_dev_tracing() {
         .with(
             tracing_subscriber::fmt::layer()
                 .json()
-                .log_internal_errors(true),
+                .log_internal_errors(true)
+                .with_file(true)
+                .with_line_number(true),
         )
         .init();
 }

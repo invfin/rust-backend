@@ -12,8 +12,6 @@ def transform_countries():
         pl.col("iso").alias("iso"),
         pl.col("alpha_2_code").alias("alpha_2_code"),
         pl.col("alpha_3_code").alias("alpha_3_code"),
-        pl.lit(datetime.now()).alias("created_at"),
-        pl.lit(datetime.now()).alias("updated_at"),
     ]
 
 
@@ -43,46 +41,52 @@ def transform_companies():
         pl.col("sector_id").alias("sector_id"),
         pl.col("is_adr").alias("is_adr"),
         pl.col("is_fund").alias("is_fund"),
-        pl.lit(datetime.now()).alias("created_at"),
-        pl.lit(datetime.now()).alias("updated_at"),
     ]
 
 
-def run_changes():
-    for old_table, selection in (
-        ("assets_countries", transform_countries()),
-        (
-            "assets_currencies",
-            (
-                pl.col("currency").alias("alphabetic_code"),
-                pl.col("iso").alias("numeric_code"),
-                pl.all().exclude("currency", "iso", "spanish_name", "accronym"),
-            ),
-        ),
-        ("assets_sectors", (pl.col("id"), pl.col("sector").alias("name"))),
-        ("assets_industries", (pl.col("id"), pl.col("industry").alias("name"))),
-        (
-            "assets_exchanges",
-            (
-                pl.col("exchange_ticker").alias("ticker"),
-                pl.col("id"),
-                pl.col("country_id"),
-                pl.col("exchange").alias("name"),
-                pl.lit("").alias("image"),
-            ),
-        ),
-        ("assets_companies", transform_companies()),
-    ):
-        (
-            pl.read_database_uri(f"SELECT * FROM {old_table}", old_db)
-            .select(selection)
-            .fill_null("")
-            .write_database(
-                table_name=old_table.replace("assets_", ""),
-                connection=new_db,
-                if_table_exists="append",
-            )
+def run_changes(old_table, selection, new_table):
+    (
+        pl.read_database_uri(f"SELECT * FROM {old_table}", old_db)
+        .select(selection)
+        .fill_null("")
+        .write_database(
+            table_name=new_table,
+            connection=new_db,
+            if_table_exists="append",
         )
+    )
 
 
-run_changes()
+CHANGES = (
+    ("assets_countries", transform_countries()),
+    (
+        "assets_currencies",
+        (
+            pl.col("currency").alias("alphabetic_code"),
+            pl.col("iso").alias("numeric_code"),
+            pl.all().exclude("currency", "iso", "spanish_name", "accronym"),
+        ),
+    ),
+    ("assets_sectors", (pl.col("id"), pl.col("sector").alias("name"))),
+    ("assets_industries", (pl.col("id"), pl.col("industry").alias("name"))),
+    (
+        "assets_exchanges",
+        (
+            pl.col("exchange_ticker").alias("ticker"),
+            pl.col("id"),
+            pl.col("country_id"),
+            pl.col("exchange").alias("name"),
+            pl.lit("").alias("image"),
+        ),
+    ),
+    ("assets_companies", transform_companies()),
+)
+
+
+def run(changes):
+    for old_table, selection in changes:
+        run_changes(old_table, selection, old_table.replace("assets_", ""))
+    run_changes("assets_currencies_countries", pl.all(), "currencies_countries_m2m")
+
+
+run(CHANGES)

@@ -26,16 +26,9 @@ const CORE_THREADS: usize = 4;
 
 fn main() -> Result<(), i16> {
     read_default_file();
+    let config = Config::from_environment().init_tracing();
+    let state = AppState(Arc::new(App::new(&config)));
 
-    let config = Config::from_environment();
-    match config.env {
-        EnvIs::Dev => init_dev_tracing(),
-        EnvIs::Prod => init_prod_tracing(),
-    }
-
-    let app = Arc::new(App::new(&config));
-    let state = AppState(app);
-    info!("lets go!");
     let router = get_router(state.clone());
 
     let mut builder = tokio::runtime::Builder::new_multi_thread();
@@ -45,19 +38,20 @@ fn main() -> Result<(), i16> {
         builder.max_blocking_threads(threads);
     }
 
-    let rt = builder.build().unwrap();
-
     let service = router.into_make_service_with_connect_info::<SocketAddr>();
 
     // Block the main thread until the server has shutdown
-    rt.block_on(async {
-        let listener = TcpListener::bind((config.ip, config.port)).await?;
+    builder
+        .build()
+        .unwrap()
+        .block_on(async {
+            let listener = TcpListener::bind((config.ip, config.port)).await?;
 
-        axum::serve(listener, service)
-            .with_graceful_shutdown(shutdown_signal())
-            .await
-    })
-    .unwrap();
+            axum::serve(listener, service)
+                .with_graceful_shutdown(shutdown_signal())
+                .await
+        })
+        .unwrap();
 
     info!("Server has gracefully shutdown!");
     Ok(())

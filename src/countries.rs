@@ -59,19 +59,19 @@ struct Country {
         )
 )]
 async fn list_countries(state: AppState) -> AppResult<Vec<Country>> {
-    Ok(Json(
-        state
-            .db_write()
-            .await?
-            .interact(move |conn| {
+    state
+        .db_write()
+        .await?
+        .interact(move |conn| {
+            Ok(Json(
                 countries::table
                     .select(Country::as_select())
                     .load::<Country>(conn)
-                    .map_err(AppError::DatabaseQueryError)
-            })
-            .await
-            .map_err(AppError::DatabaseConnectionInteractError)??,
-    ))
+                    .map_err(AppError::DatabaseQueryError)?
+            ))
+        })
+        .await
+        .map_err(AppError::DatabaseConnectionInteractError)?
 }
 
 #[utoipa::path(
@@ -126,6 +126,7 @@ async fn read_country(Path(id): Path<i64>, state: AppState) -> AppResult<Country
     ))
 }
 
+#[derive(Debug)]
 pub enum CountryIndexes<'a> {
     Id(i64),
     Iso(&'a str),
@@ -142,7 +143,7 @@ pub fn get_country_id<'a>(
             .first(conn)
             .map_err(AppError::DatabaseQueryError),
         CountryIndexes::Iso(v) => countries::table
-            .filter(countries::iso.eq(v))
+            .filter(countries::alpha_2_code.eq(v))
             .select(countries::id)
             .first(conn)
             .map_err(AppError::DatabaseQueryError),

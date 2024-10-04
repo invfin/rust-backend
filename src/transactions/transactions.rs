@@ -17,14 +17,17 @@ use crate::{
     AppState,
 };
 
-use super::files_parsers::{parse_credit_agricole, parse_firstrade, TransactionWrapper};
+use super::{
+    accounts::{create_account_from_request, AccountRequest},
+    files_parsers::{parse_credit_agricole, parse_firstrade, TransactionWrapper},
+};
 
 const CONTENT_LENGTH_LIMIT: usize = 20 * 1024 * 1024;
 
 #[derive(OpenApi)]
 #[openapi(
     paths(upload_transactions_file, create_transaction),
-    components(schemas(AssetDetail, InvestmentDetail, TransactionDetail, Transaction, TransactionRequest)),
+    components(schemas(AssetDetail, InvestmentDetail, AccountReq, TransactionDetail, Transaction, TransactionRequest)),
     security(("token_jwt" = []))
 )]
 pub struct ApiDoc;
@@ -205,7 +208,8 @@ struct Transaction {
     #[serde(skip)]
     user_id: i64,
     #[serde(skip)]
-    details_id: Option<i64>, //TODO: use option instead of skip?
+    details_id: i64,
+    #[serde(skip)]
     account_id: i64,
     date: chrono::NaiveDate,
     amount: BigDecimal,
@@ -213,11 +217,19 @@ struct Transaction {
 }
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
+enum AccountReq {
+    Id(i64),
+    Account(AccountRequest),
+}
+
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 struct TransactionRequest {
     details: TransactionDetail,
     investment_details: Option<InvestmentDetail>,
     transaction: Transaction,
     asset: Option<AssetDetail>,
+    account: AccountReq,
 }
 
 #[utoipa::path(
@@ -272,7 +284,15 @@ async fn create_transaction(
 
                 let mut transaction = req.transaction;
                 transaction.user_id = current_user.id;
-                transaction.details_id = Some(details_id);
+                transaction.details_id = details_id;
+                transaction.account_id = match req.account {
+                    AccountReq::Id(v) => v,
+                    AccountReq::Account(v) => {
+                        create_account_from_request(v, current_user.id, conn)?.id
+                    }
+                };
+
+                debug!("transaction {transaction:?}");
 
                 let transaction_id = diesel::insert_into(transactions::table)
                     .values(transaction)

@@ -9,6 +9,6 @@ pub fn get_currency_from_country(
     currencies_countries_m2m::table
         .filter(currencies_countries_m2m::country_id.eq(country_id))
         .select(currencies_countries_m2m::currency_id)
-        .first::<i64>(conn)
+        .first(conn)
         .map_err(AppError::DatabaseQueryError)
 }

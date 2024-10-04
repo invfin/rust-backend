@@ -64,7 +64,7 @@ impl JWTClaims {
     }
 }
 
-pub async fn create_token(
+pub fn create_token(
     user_id: i64,
     user_role: &str,
     state: &AppState,
